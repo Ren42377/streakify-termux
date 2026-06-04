@@ -1,0 +1,9 @@
+browser.headless=true
+browser.timeout_ms=30000
+browser.safe_mode=true
+browser.profile_dir=~/.streakify/selenium-profile
+browser.binary_path=
+browser.driver_path=
+tiktok.login_url=https://www.tiktok.com/login
+tiktok.messages_url=https://www.tiktok.com/messages
+tiktok.login_wait_seconds=300
