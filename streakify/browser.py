@@ -21,45 +21,6 @@ def click_element(element: "WebElement") -> None:
 
 
 def create_browser_driver(profile_dir: Path, config: BrowserConfig, force_headful: bool = False) -> "WebDriver":
-    if config.engine == "undetected":
-        return _create_undetected_browser_driver(profile_dir, config, force_headful=force_headful)
-    return _create_selenium_browser_driver(profile_dir, config, force_headful=force_headful)
-
-
-def _create_selenium_browser_driver(profile_dir: Path, config: BrowserConfig, force_headful: bool = False) -> "WebDriver":
-    browser_binary = _find_browser_binary(config)
-    driver_binary = _find_driver_binary(config)
-    headless = config.headless and not force_headful
-    if not headless and not os.environ.get("DISPLAY"):
-        raise BrowserAutomationError("Headful browser requires DISPLAY. Start Termux:X11 or enable headless mode.")
-    profile_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-        from selenium.webdriver.chrome.service import Service
-    except ModuleNotFoundError as exc:
-        raise BrowserAutomationError("Selenium is not installed. Run pip install -r requirements.txt.") from exc
-    options = Options()
-    options.binary_location = browser_binary
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1280,900")
-    options.add_argument(f"--user-data-dir={profile_dir}")
-    if config.safe_mode:
-        options.add_argument("--disable-background-networking")
-    service = Service(executable_path=driver_binary)
-    try:
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.set_page_load_timeout(max(1, config.timeout_ms // 1000))
-        return driver
-    except Exception as exc:
-        raise BrowserAutomationError(f"Browser failed to start: {exc}") from exc
-
-
-def _create_undetected_browser_driver(profile_dir: Path, config: BrowserConfig, force_headful: bool = False) -> "WebDriver":
     browser_binary = _find_browser_binary(config)
     driver_binary = _prepare_undetected_driver_binary(config)
     headless = config.headless and not force_headful
@@ -83,8 +44,7 @@ def _create_undetected_browser_driver(profile_dir: Path, config: BrowserConfig, 
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1280,900")
     options.add_argument("--disable-notifications")
-    if config.safe_mode:
-        options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-background-networking")
     try:
         driver = uc.Chrome(
             options=options,

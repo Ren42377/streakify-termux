@@ -10,10 +10,8 @@ class StreakifyConfigError(RuntimeError):
 
 @dataclass(frozen=True)
 class BrowserConfig:
-    engine: str
     headless: bool
     timeout_ms: int
-    safe_mode: bool
     profile_dir: Path
     binary_path: str | None
     driver_path: str | None
@@ -33,10 +31,8 @@ class AppConfig:
 
 
 DEFAULT_VALUES = {
-    "browser.engine": "selenium",
     "browser.headless": "true",
     "browser.timeout_ms": "30000",
-    "browser.safe_mode": "true",
     "browser.profile_dir": "~/.streakify/selenium-profile",
     "browser.binary_path": "",
     "browser.driver_path": "",
@@ -53,10 +49,8 @@ def load_config(path: str | Path = "config.txt") -> AppConfig:
         values.update(_read_config_file(config_path))
     return AppConfig(
         browser=BrowserConfig(
-            engine=_read_engine(values, "browser.engine"),
             headless=_read_bool(values, "browser.headless"),
             timeout_ms=_read_positive_int(values, "browser.timeout_ms"),
-            safe_mode=_read_bool(values, "browser.safe_mode"),
             profile_dir=Path(values["browser.profile_dir"]).expanduser(),
             binary_path=_read_optional_text(values, "browser.binary_path"),
             driver_path=_read_optional_text(values, "browser.driver_path"),
@@ -92,13 +86,6 @@ def _read_bool(values: dict[str, str], key: str) -> bool:
     if value in {"false", "0", "no", "off"}:
         return False
     raise StreakifyConfigError(f"Invalid boolean value for {key}: {values[key]}.")
-
-
-def _read_engine(values: dict[str, str], key: str) -> str:
-    value = values[key].strip().lower()
-    if value in {"selenium", "undetected"}:
-        return value
-    raise StreakifyConfigError(f"Invalid browser engine for {key}: {values[key]}.")
 
 
 def _read_positive_int(values: dict[str, str], key: str) -> int:

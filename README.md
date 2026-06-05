@@ -43,12 +43,6 @@ Jika salah satu command tidak ditemukan, cek kembali paket Chromium dari repo Te
 
 Edit `config.txt` jika path browser atau driver di HP kamu berbeda.
 
-Default browser engine adalah `selenium`. Untuk eksperimen undetected driver, ubah:
-
-```text
-browser.engine=undetected
-```
-
 Default profile browser disimpan di `~/.streakify/selenium-profile`.
 
 Jangan simpan profile browser di folder `/storage/emulated/0/...` karena Chromium bisa gagal membuat lock file di shared storage Android.
