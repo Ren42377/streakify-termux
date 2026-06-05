@@ -19,7 +19,7 @@ pkg update -y
 
 echo "Installing system packages."
 pkg install -y python x11-repo
-pkg install -y chromium
+pkg install -y chromium termux-x11-nightly
 
 echo "Installing Python dependencies."
 python -m pip install -r "$PROJECT_DIR/requirements.txt"

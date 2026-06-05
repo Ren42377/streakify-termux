@@ -26,7 +26,7 @@ Atau install manual:
 pkg update
 pkg install python
 pkg install x11-repo
-pkg install chromium
+pkg install chromium termux-x11-nightly
 python -m pip install -r requirements.txt
 ```
 
@@ -65,6 +65,14 @@ python -m streakify tiktok
 
 Jika belum login dan mode headless aktif, Streakify akan mencoba membuka browser headful saat `DISPLAY` tersedia. Untuk debugging visual, jalankan Termux:X11 lebih dulu, lalu ulang command.
 
+Untuk debugging visual yang langsung membuka browser headful:
+
+```sh
+sh debug.sh
+```
+
+Script ini mencoba menyalakan service `tx11`, membaca display aktif, lalu menjalankan TikTok check dengan mode headless dimatikan sementara.
+
 ## Troubleshooting
 
 Jika browser gagal start, cek:
@@ -73,5 +81,7 @@ Jika browser gagal start, cek:
 - `chromedriver --version`
 - isi `config.txt`
 - apakah Termux:X11 sudah aktif saat memakai mode headful
+- `sv status tx11`
+- `cat $PREFIX/var/run/tx11.display`
 
 Jika TikTok meminta login, selesaikan login manual di browser lalu tekan Enter di Termux.
