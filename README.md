@@ -2,7 +2,7 @@
 
 Streakify adalah automation tool Python untuk menjaga streak di beberapa platform dari Termux.
 
-Status saat ini masih tahap awal. Fitur pertama hanya mengecek session TikTok melalui browser Chromium dan Selenium.
+Status saat ini masih tahap awal. Fitur TikTok sudah bisa membuka messages, mengecek session, memilih chat, dan menjalankan message dry-run melalui Chromium dan Selenium.
 
 ## Kebutuhan
 
@@ -47,11 +47,19 @@ Default profile browser disimpan di `~/.streakify/selenium-profile`.
 
 Jangan simpan profile browser di folder `/storage/emulated/0/...` karena Chromium bisa gagal membuat lock file di shared storage Android.
 
+tiktok.dry_run=true membuat Streakify memilih chat dan mengisi pesan tanpa mengirim. Untuk benar-benar mengirim pesan, ubah:
+
+```text
+tiktok.dry_run=false
+```
+
+tiktok.max_chats mengatur jumlah chat yang diproses dalam satu run. Defaultnya `1`.
+
 Jangan commit token, cookie, credential, atau session file.
 
 ## Penggunaan
 
-Jalankan pengecekan session TikTok:
+Jalankan flow TikTok:
 
 ```sh
 sh run.sh

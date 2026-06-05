@@ -22,6 +22,11 @@ class TikTokConfig:
     login_url: str
     messages_url: str
     login_wait_seconds: int
+    message_template: str
+    max_chats: int
+    dry_run: bool
+    chat_open_delay_ms: int
+    send_delay_ms: int
 
 
 @dataclass(frozen=True)
@@ -39,6 +44,11 @@ DEFAULT_VALUES = {
     "tiktok.login_url": "https://www.tiktok.com/login",
     "tiktok.messages_url": "https://www.tiktok.com/messages",
     "tiktok.login_wait_seconds": "300",
+    "tiktok.message_template": "Keep the streak alive.",
+    "tiktok.max_chats": "1",
+    "tiktok.dry_run": "true",
+    "tiktok.chat_open_delay_ms": "1500",
+    "tiktok.send_delay_ms": "1000",
 }
 
 
@@ -59,6 +69,11 @@ def load_config(path: str | Path = "config.txt") -> AppConfig:
             login_url=_read_required_text(values, "tiktok.login_url"),
             messages_url=_read_required_text(values, "tiktok.messages_url"),
             login_wait_seconds=_read_positive_int(values, "tiktok.login_wait_seconds"),
+            message_template=_read_required_text(values, "tiktok.message_template"),
+            max_chats=_read_positive_int(values, "tiktok.max_chats"),
+            dry_run=_read_bool(values, "tiktok.dry_run"),
+            chat_open_delay_ms=_read_positive_int(values, "tiktok.chat_open_delay_ms"),
+            send_delay_ms=_read_positive_int(values, "tiktok.send_delay_ms"),
         ),
     )
 

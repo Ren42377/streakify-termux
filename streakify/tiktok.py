@@ -5,7 +5,7 @@ import sys
 import time
 from typing import TYPE_CHECKING
 
-from streakify.browser import BrowserAutomationError, create_browser_driver
+from streakify.browser import BrowserAutomationError, click_element, create_browser_driver
 from streakify.config import AppConfig
 from streakify.results import TikTokRunResult
 
@@ -20,6 +20,12 @@ CHAT_SELECTORS = (
     '[data-e2e="message-list"] a',
     '[data-e2e="chat-item"]',
     'a[href*="/messages"]',
+)
+
+COMPOSER_SELECTORS = (
+    '[contenteditable="true"]',
+    'div[role="textbox"]',
+    'textarea',
 )
 
 
@@ -87,6 +93,28 @@ class TikTokClient:
                 continue
         return []
 
+    def find_composer(self) -> "WebElement":
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+
+        for selector in COMPOSER_SELECTORS:
+            try:
+                element = WebDriverWait(self.driver, self.timeout_seconds).until(
+                    lambda driver: next(
+                        (
+                            item
+                            for item in driver.find_elements(By.CSS_SELECTOR, selector)
+                            if item.is_displayed()
+                        ),
+                        None,
+                    )
+                )
+                if element:
+                    return element
+            except Exception:
+                continue
+        raise TikTokAutomationError("Message input was not found.")
+
     def check_session(self) -> TikTokRunResult:
         self.open_messages()
         deadline = time.monotonic() + self.timeout_seconds
@@ -100,6 +128,55 @@ class TikTokClient:
         if self.has_login_prompt():
             return self._result("login_required", "TikTok login is required.", 0)
         return self._result("no_chats", "No visible TikTok chats were found.", 0)
+
+    def send_message_to_chat(self, chat: "WebElement") -> bool:
+        from selenium.webdriver.common.keys import Keys
+
+        click_element(chat)
+        time.sleep(self.config.tiktok.chat_open_delay_ms / 1000)
+        composer = self.find_composer()
+        click_element(composer)
+        composer.send_keys(Keys.CONTROL, "a")
+        composer.send_keys(Keys.BACKSPACE)
+        composer.send_keys(self.config.tiktok.message_template)
+        if self.config.tiktok.dry_run:
+            return False
+        composer.send_keys(Keys.ENTER)
+        time.sleep(self.config.tiktok.send_delay_ms / 1000)
+        return True
+
+    def run_messages(self, session_result: TikTokRunResult | None = None) -> TikTokRunResult:
+        if session_result is None:
+            session_result = self.check_session()
+        if session_result.status != "ok":
+            return session_result
+        selected = 0
+        sent = 0
+        seen_chat_ids: set[str] = set()
+        for _ in range(self.config.tiktok.max_chats):
+            chats = self.find_chat_items()
+            if not chats:
+                break
+            target_chat = self._select_chat(chats, seen_chat_ids)
+            if target_chat is None:
+                break
+            selected += 1
+            try:
+                if self.send_message_to_chat(target_chat):
+                    sent += 1
+            except Exception as exc:
+                raise TikTokAutomationError(f"Message action failed: {exc}") from exc
+        if selected == 0:
+            raise TikTokAutomationError("No visible TikTok chats were available for messaging.")
+        return TikTokRunResult(
+            status="ok",
+            message="TikTok message flow completed.",
+            chats_found=session_result.chats_found,
+            selected_chats=selected,
+            sent_chats=sent,
+            dry_run=self.config.tiktok.dry_run,
+            headless=self.headless,
+        )
 
     def wait_for_manual_login(self) -> TikTokRunResult:
         try:
@@ -141,8 +218,29 @@ class TikTokClient:
             status=status,
             message=message,
             chats_found=chats_found,
+            dry_run=self.config.tiktok.dry_run,
             headless=self.headless,
         )
+
+    def _select_chat(self, chats: list["WebElement"], seen_chat_ids: set[str]) -> "WebElement | None":
+        for chat in chats:
+            chat_id = self._read_chat_id(chat)
+            if chat_id and chat_id not in seen_chat_ids:
+                seen_chat_ids.add(chat_id)
+                return chat
+        return None
+
+    def _read_chat_id(self, chat: "WebElement") -> str:
+        try:
+            chat_id = chat.get_attribute("href")
+            if chat_id:
+                return chat_id
+            text = chat.text.strip()
+            if text:
+                return text.split("\n", 1)[0]
+        except Exception:
+            return ""
+        return ""
 
 
 def run_tiktok(config: AppConfig) -> TikTokRunResult:
@@ -152,7 +250,9 @@ def run_tiktok(config: AppConfig) -> TikTokRunResult:
         client = TikTokClient(driver, config, headless=headless)
         result = client.check_session()
         if result.status != "login_required":
-            return result
+            if result.status != "ok":
+                return result
+            return client.run_messages(result)
         if headless:
             if not os.environ.get("DISPLAY"):
                 return TikTokRunResult(
@@ -164,7 +264,10 @@ def run_tiktok(config: AppConfig) -> TikTokRunResult:
             driver.quit()
             driver = _create_tiktok_driver(config, force_headful=True)
             client = TikTokClient(driver, config, headless=False)
-        return client.wait_for_manual_login()
+        login_result = client.wait_for_manual_login()
+        if login_result.status != "ok":
+            return login_result
+        return client.run_messages(login_result)
     finally:
         driver.quit()
 

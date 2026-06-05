@@ -37,6 +37,9 @@ def _run_tiktok_command(config_path: str) -> int:
     print(f"Status: {result.status}")
     print(f"Message: {result.message}")
     print(f"Chats found: {result.chats_found}")
+    print(f"Selected chats: {result.selected_chats}")
+    print(f"Sent chats: {result.sent_chats}")
+    print(f"Dry run: {str(result.dry_run).lower()}")
     print(f"Headless: {str(result.headless).lower()}")
     if result.status == "ok":
         return 0
