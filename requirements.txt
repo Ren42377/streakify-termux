@@ -1,1 +1,3 @@
 selenium
+setuptools
+undetected-chromedriver

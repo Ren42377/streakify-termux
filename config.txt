@@ -1,3 +1,4 @@
+browser.engine=selenium
 browser.headless=true
 browser.timeout_ms=30000
 browser.safe_mode=true
