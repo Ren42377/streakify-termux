@@ -14,14 +14,20 @@ Status saat ini masih tahap awal. Fitur pertama hanya mengecek session TikTok me
 
 ## Instalasi
 
+Cara paling mudah:
+
+```sh
+sh install.sh
+```
+
+Atau install manual:
+
 ```sh
 pkg update
 pkg install python
 pkg install x11-repo
 pkg install chromium
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Pastikan browser dan driver tersedia:
@@ -46,6 +52,12 @@ Jangan commit token, cookie, credential, atau session file.
 ## Penggunaan
 
 Jalankan pengecekan session TikTok:
+
+```sh
+sh run.sh
+```
+
+Atau langsung lewat Python:
 
 ```sh
 python -m streakify tiktok
