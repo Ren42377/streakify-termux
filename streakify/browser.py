@@ -9,10 +9,15 @@ from streakify.config import BrowserConfig
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver
+    from selenium.webdriver.remote.webelement import WebElement
 
 
 class BrowserAutomationError(RuntimeError):
     pass
+
+
+def click_element(element: "WebElement") -> None:
+    element.click()
 
 
 def create_browser_driver(profile_dir: Path, config: BrowserConfig, force_headful: bool = False) -> "WebDriver":
