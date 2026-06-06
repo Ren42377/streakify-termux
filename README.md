@@ -1,281 +1,264 @@
-<p align="center">
-  <h1 align="center">Streakify</h1>
-  <p align="center">
-    Jaga streak di berbagai platform secara otomatis, langsung dari HP Android kamu.
-    <br />
-    Dibangun khusus untuk <strong>Termux</strong>.
-  </p>
-  <p align="center">
-    <img src="https://img.shields.io/badge/Platform-Termux-black?style=flat-square&logo=android&logoColor=white" alt="Platform">
-    <img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
-    <img src="https://img.shields.io/badge/Browser-Chromium-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="Browser">
-    <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-  </p>
-</p>
+# Streakify
 
----
+Streakify is a Python automation tool for maintaining streaks across platforms directly from Termux on Android.
 
-## Apa Itu Streakify?
+Current platform support:
 
-Streakify adalah tool otomasi Python yang berjalan di **Termux** (terminal Linux di Android). Tool ini membantu kamu menjaga streak di berbagai platform tanpa harus membuka aplikasi satu per satu setiap hari.
+- TikTok: opens messages, checks the session, selects chats, and sends a configured message through Chromium and Selenium.
 
-**Saat ini mendukung:**
-- **TikTok** -- Kirim pesan otomatis ke chat untuk menjaga streak.
+More platforms can be added later as separate adapters.
 
-> Platform lain bisa ditambahkan di masa depan sebagai adapter terpisah.
+## How It Works
 
----
-
-## Cara Kerja
-
-```
-Kamu jalankan Streakify di Termux
+```text
+Run Streakify in Termux
         |
         v
-Streakify buka Chromium secara otomatis (headless / tanpa tampilan)
+Streakify starts Chromium automatically
         |
         v
-Masuk ke halaman messages platform
+Opens the platform messages page
         |
         v
-Pilih chat --> Ketik pesan --> Kirim
+Selects chat -> Inserts message -> Sends
         |
         v
-Selesai. Streak aman.
+Done
 ```
 
----
+## Requirements
 
-## Yang Kamu Butuhkan
+| Requirement | Notes |
+| --- | --- |
+| Android phone | Enough storage for Termux, Chromium, and browser profile data |
+| Termux | Use the latest build from F-Droid or official Termux sources |
+| Python | Installed through Termux packages |
+| Chromium and ChromeDriver | Used by Selenium automation |
+| Internet access | Needed for installation and automation |
+| Termux:X11 | Optional, only needed for headful browser mode or manual login |
 
-| Kebutuhan | Keterangan |
-|-----------|------------|
-| **HP Android** | Dengan penyimpanan cukup untuk Termux dan Chromium |
-| **Termux** | Versi terbaru dari [F-Droid](https://f-droid.org/en/packages/com.termux/) (jangan dari Play Store) |
-| **Internet** | Untuk install paket dan menjalankan automasi |
-| **Termux:X11** | Hanya jika perlu login manual lewat browser (opsional) |
+Do not install Termux from the Play Store. That version is outdated and often breaks package installation. Use [F-Droid](https://f-droid.org/en/packages/com.termux/) or [Termux GitHub releases](https://github.com/termux/termux-app/releases).
 
-> **Penting:** Termux dari Play Store sudah tidak di-update dan sering bermasalah. Selalu install dari **F-Droid** atau dari [GitHub Releases Termux](https://github.com/termux/termux-app/releases).
+## Installation
 
----
-
-## Instalasi
-
-### Cara Cepat (Recommended)
-
-Buka Termux, lalu jalankan:
+Fast setup:
 
 ```sh
-# Clone repo
 git clone https://github.com/Ren42377/streakify-termux.git
 cd streakify-termux
-
-# Install semua kebutuhan
 sh install.sh
 ```
 
-Script `install.sh` akan otomatis:
-1. Update paket Termux
-2. Install Python, Chromium, dan Termux:X11
-3. Install dependency Python dari `requirements.txt`
-4. Verifikasi Chromium dan ChromeDriver sudah tersedia
+The installer will:
 
-### Cara Manual
+1. Update Termux packages.
+2. Install Python, Chromium, and Termux:X11 packages.
+3. Install Python dependencies from `requirements.txt`.
+4. Verify that Chromium and ChromeDriver are available.
 
-Jika kamu lebih suka install satu per satu:
+Manual setup:
 
 ```sh
 pkg update
 pkg install python x11-repo
 pkg install chromium termux-x11-nightly
-```
-
-Clone repo dan install dependency Python:
-
-```sh
-git clone https://github.com/Ren42377/streakify-termux.git
-cd streakify-termux
 python -m pip install -r requirements.txt
 ```
 
-Pastikan browser dan driver sudah ter-install:
+Verify browser tools:
 
 ```sh
 chromium-browser --version
 chromedriver --version
 ```
 
-Jika salah satu perintah di atas error atau tidak ditemukan, cek kembali instalasi Chromium dari repo Termux.
+If either command is missing, check the Chromium package installation from Termux repositories.
 
----
+## Configuration
 
-## Konfigurasi
+Edit `config.txt` before running Streakify.
 
-Sebelum menjalankan Streakify, sesuaikan file `config.txt` di folder utama project. File ini sudah berisi default yang bisa langsung dipakai.
-
-### Edit Config
-
-Buka `config.txt` dan sesuaikan sesuai kebutuhan:
+Required settings:
 
 ```txt
 tiktok=true
 browser.headless=true
-tiktok.message=gm
+tiktok.message=🔥
 tiktok.max_chats=10
 ```
 
-### Penjelasan Setiap Setting
+| Setting | Value | Purpose |
+| --- | --- | --- |
+| `tiktok` | `true` or `false` | Enable or skip the TikTok flow |
+| `browser.headless` | `true` or `false` | Use headless Chromium when true. Headful mode requires Termux:X11 |
+| `tiktok.message` | Any non-empty text | Message sent to each chat. Emoji are supported if `config.txt` is saved as UTF-8 |
+| `tiktok.max_chats` | Positive integer | Number of chats processed in one run |
 
-| Setting | Nilai | Fungsi |
-|---------|-------|--------|
-| `tiktok` | `true` / `false` | Aktifkan atau matikan flow TikTok |
-| `browser.headless` | `true` / `false` | `true` = browser tanpa tampilan (lebih cepat). `false` = browser dengan jendela (butuh Termux:X11) |
-| `tiktok.message` | teks apapun | Pesan yang akan dikirim ke setiap chat. Mendukung emoji jika file disimpan sebagai UTF-8 |
-| `tiktok.max_chats` | angka positif | Jumlah chat yang diproses dalam satu kali jalan |
+If any setting is missing, misspelled, duplicated, empty, or invalid, Streakify stops before opening the browser and prints the setting that must be fixed.
 
-> **Tips:** Untuk pemakaian sehari-hari, gunakan `browser.headless=true`. Mode ini lebih cepat dan tidak butuh Termux:X11.
+Browser and ChromeDriver paths are not configured in `config.txt`. Streakify detects them automatically from Termux.
 
----
+## Runtime Data
 
-## Cara Pakai
+By default, runtime data is stored in:
 
-### Jalankan Streakify
-
-```sh
-sh run.sh
-```
-
-Atau langsung lewat Python:
-
-```sh
-python -m streakify tiktok
-```
-
-### Pertama Kali Pakai (Login)
-
-Saat pertama kali dijalankan, kamu perlu login ke TikTok:
-
-1. Jika `browser.headless=true` dan DISPLAY tersedia, Streakify otomatis membuka browser dengan jendela untuk login.
-2. Login ke akun TikTok kamu di browser yang muncul.
-3. Setelah login berhasil, tekan **Enter** di Termux.
-4. Session akan tersimpan, jadi kamu tidak perlu login lagi di run berikutnya.
-
-> **Butuh Termux:X11?** Hanya saat login manual pertama kali. Setelah session tersimpan, kamu bisa pakai mode headless terus.
-
-### Memindahkan Data Runtime
-
-Secara default, semua data runtime (profil browser, cache driver) disimpan di:
-
-```
+```text
 $HOME/.streakify/
 ```
 
-Jika ingin lokasi berbeda:
+That directory contains:
+
+- Browser profile and login session: `$HOME/.streakify/auth/selenium-profile`
+- Driver cache: `$HOME/.streakify/drivers`
+
+To move all runtime data:
 
 ```sh
 STREAKIFY_HOME="$HOME/.streakify-alt" sh run.sh
 ```
 
-> Jangan arahkan `STREAKIFY_HOME` ke folder repo atau shared storage Android, karena Chromium bisa gagal membuat file kunci.
+Do not point `STREAKIFY_HOME` to the project folder or Android shared storage. Chromium can fail to create lock files there.
 
----
+Do not commit tokens, cookies, credentials, browser profiles, or session files.
+
+## Usage
+
+Run the TikTok flow:
+
+```sh
+sh run.sh
+```
+
+Or run it directly with Python:
+
+```sh
+python -m streakify tiktok
+```
+
+If `tiktok=false`, Streakify skips the TikTok flow and exits successfully.
+
+## First Login
+
+TikTok may require a manual login the first time.
+
+If `browser.headless=true` and TikTok asks for login, Streakify tries to open a headful browser when `DISPLAY` is available. Start Termux:X11 first if manual login is needed.
+
+After login completes:
+
+1. Finish login in the browser window.
+2. Return to Termux.
+3. Press Enter when prompted.
+4. The browser session is saved for later runs.
+
+After the session is saved, daily runs can usually use `browser.headless=true` without Termux:X11.
+
+## Termux:X11 Notes
+
+Termux:X11 is only needed for:
+
+- `browser.headless=false`
+- Manual login in a visible browser window
+
+It is not required for a normal headless run if the browser profile is already logged in.
+
+When Termux:X11 is missing or not ready, Streakify prints diagnostics for:
+
+- `DISPLAY`
+- `termux-x11`
+- `$PREFIX/var/run/tx11.display`
+- `sv status tx11`
 
 ## Troubleshooting
 
-### Browser Gagal Start
+### Browser Fails to Start
 
-Cek hal-hal berikut:
+Check:
 
 ```sh
-# Apakah Chromium ter-install?
 chromium-browser --version
-
-# Apakah ChromeDriver ter-install?
 chromedriver --version
-
-# Apakah config.txt sudah benar?
 cat config.txt
 ```
 
-### Login Diminta Terus
+If using headful mode or manual login, also check:
 
-Session mungkin expired. Hapus profil browser dan login ulang:
+```sh
+command -v termux-x11
+sv status tx11
+cat $PREFIX/var/run/tx11.display
+```
+
+If you do not want to use Termux:X11, set:
+
+```txt
+browser.headless=true
+```
+
+Then make sure the browser profile is already logged in.
+
+### Login Keeps Appearing
+
+The saved session may be expired. Remove the browser profile and log in again:
 
 ```sh
 rm -rf $HOME/.streakify/auth/selenium-profile
 sh run.sh
 ```
 
-### Termux:X11 Bermasalah
+### Config Error
 
-Jika mode headful atau login manual tidak bisa jalan:
+Streakify refuses to run when:
 
-```sh
-# Apakah Termux:X11 ter-install?
-command -v termux-x11
+- A required setting is missing.
+- A setting name is misspelled.
+- A value is empty or invalid.
+- A deprecated setting is still used.
+- A setting is duplicated.
 
-# Cek status service
-sv status tx11
+Follow the error message and update `config.txt`.
 
-# Cek display file
-cat $PREFIX/var/run/tx11.display
-```
+## Project Structure
 
-> **Alternatif:** Jika tidak mau repot dengan Termux:X11, pastikan kamu login dulu lewat cara lain, lalu jalankan dengan `browser.headless=true`.
-
-### Error "Config error"
-
-Streakify akan menolak jalan dan menampilkan pesan jelas jika:
-- Ada setting yang hilang
-- Nama setting salah ketik
-- Value kosong atau tidak valid
-- Memakai setting yang sudah deprecated
-
-Ikuti petunjuk di pesan error untuk memperbaiki `config.txt`.
-
----
-
-## Struktur Project
-
-```
+```text
 streakify-termux/
-├── install.sh              # Script instalasi otomatis
-├── run.sh                  # Script untuk menjalankan Streakify
-├── config.txt              # Konfigurasi (edit sesuai kebutuhan)
-├── requirements.txt        # Dependency Python
-├── LICENSE                 # Lisensi MIT
-├── README.md               # Dokumentasi (file ini)
-└── streakify/              # Package Python utama
+├── install.sh              # Installation script
+├── run.sh                  # Runner script
+├── config.txt              # User configuration
+├── requirements.txt        # Python dependencies
+├── LICENSE                 # MIT license
+├── README.md               # Documentation
+└── streakify/              # Python package
     ├── __init__.py
-    ├── __main__.py          # Entry point CLI
-    ├── browser.py           # Setup dan manajemen browser
-    ├── config.py            # Parsing dan validasi config
-    ├── results.py           # Data class untuk hasil run
-    ├── runtime_paths.py     # Path management
-    └── tiktok.py            # Adapter automasi TikTok
+    ├── __main__.py         # CLI entry point
+    ├── browser.py          # Browser setup and diagnostics
+    ├── config.py           # Config parsing and validation
+    ├── results.py          # Run result data class
+    ├── runtime_paths.py    # Runtime path helpers
+    └── tiktok.py           # TikTok adapter
 ```
-
----
 
 ## FAQ
 
-**Q: Apakah ini aman?**
-A: Streakify berjalan di HP kamu sendiri dan tidak mengirim data ke server manapun. Session browser disimpan secara lokal di `$HOME/.streakify/`. Pastikan kamu tidak membagikan folder ini ke orang lain.
+### Is this safe?
 
-**Q: Apakah akun bisa kena ban?**
-A: Streakify menggunakan browser sungguhan (Chromium), bukan API tidak resmi. Tapi setiap automasi punya risiko. Gunakan dengan bijak dan jangan set `max_chats` terlalu tinggi.
+Streakify runs locally on your phone and does not send your data to a Streakify server. Browser sessions are stored locally in `$HOME/.streakify/`. Do not share that directory.
 
-**Q: Bisa dijadwalkan otomatis setiap hari?**
-A: Belum ada fitur scheduling bawaan, tapi kamu bisa pakai `crond` atau `termux-job-scheduler` untuk menjalankan `sh run.sh` secara berkala.
+### Can my account be banned?
 
-**Q: HP harus root?**
-A: Tidak perlu root. Streakify berjalan sepenuhnya di dalam Termux.
+Any automation has risk. Streakify uses a real Chromium browser, but you should still use it carefully and avoid setting `tiktok.max_chats` too high.
 
-**Q: Bisa tambah platform lain?**
-A: Bisa. Streakify didesain modular. Setiap platform adalah adapter terpisah di folder `streakify/`.
+### Can it run automatically every day?
 
----
+There is no built-in scheduler yet. You can later run `sh run.sh` through Termux-compatible scheduling tools such as `crond` or `termux-job-scheduler`.
 
-## Lisensi
+### Does it require root?
 
-[MIT License](LICENSE) -- bebas digunakan, dimodifikasi, dan didistribusikan.
+No. Streakify runs fully inside Termux.
+
+### Can other platforms be added?
+
+Yes. Streakify is designed so each platform can be implemented as a separate adapter.
+
+## License
+
+[MIT License](LICENSE). You may use, modify, and distribute this project under the license terms.
