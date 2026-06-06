@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from streakify.config import BrowserConfig
+from streakify.runtime_paths import get_driver_cache_dir, get_termux_chromium_binary, get_termux_prefix
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver
@@ -21,11 +23,11 @@ def click_element(element: "WebElement") -> None:
 
 
 def create_browser_driver(profile_dir: Path, config: BrowserConfig, force_headful: bool = False) -> "WebDriver":
-    browser_binary = _find_browser_binary(config)
-    driver_binary = _prepare_undetected_driver_binary(config)
     headless = config.headless and not force_headful
     if not headless and not os.environ.get("DISPLAY"):
-        raise BrowserAutomationError("Headful browser requires DISPLAY. Start Termux:X11 or enable headless mode.")
+        raise BrowserAutomationError(build_x11_diagnostic_message("Headful browser requires DISPLAY."))
+    browser_binary = _find_browser_binary()
+    driver_binary = _prepare_undetected_driver_binary()
     profile_dir.mkdir(parents=True, exist_ok=True)
     try:
         import undetected_chromedriver as uc
@@ -42,7 +44,8 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig, force_headfu
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1280,900")
+    if headless:
+        options.add_argument("--window-size=1280,900")
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-background-networking")
     try:
@@ -55,39 +58,117 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig, force_headfu
             version_main=_read_chromium_major_version(browser_binary),
             headless=headless,
         )
+        if not headless:
+            _fit_browser_to_screen(driver)
         driver.set_page_load_timeout(max(1, config.timeout_ms // 1000))
         return driver
     except Exception as exc:
         raise BrowserAutomationError(f"Undetected browser failed to start: {exc}") from exc
 
 
-def _find_browser_binary(config: BrowserConfig) -> str:
+def build_x11_diagnostic_message(reason: str) -> str:
+    lines = [
+        reason,
+        "Termux:X11 diagnostics:",
+        _read_display_status(),
+        _read_termux_x11_status(),
+        _read_display_file_status(),
+        _read_tx11_service_status(),
+        "Fix: start Termux:X11, then rerun Streakify, or set browser.headless=true.",
+    ]
+    return "\n".join(lines)
+
+
+def _read_display_status() -> str:
+    display = os.environ.get("DISPLAY", "").strip()
+    if display:
+        return f"- DISPLAY is set to {display}."
+    return "- DISPLAY is not set."
+
+
+def _read_termux_x11_status() -> str:
+    termux_x11 = shutil.which("termux-x11")
+    if termux_x11:
+        return f"- termux-x11 found at {termux_x11}."
+    return "- termux-x11 was not found in PATH."
+
+
+def _read_display_file_status() -> str:
+    prefix = get_termux_prefix()
+    if prefix is None:
+        return "- PREFIX is not set, so tx11 display file cannot be checked."
+    display_file = prefix / "var" / "run" / "tx11.display"
+    if not display_file.exists():
+        return f"- tx11 display file was not found: {display_file}."
+    try:
+        value = display_file.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        return f"- tx11 display file exists but could not be read: {exc}."
+    if value:
+        return f"- tx11 display file found: {display_file} with value :{value}."
+    return f"- tx11 display file found but empty: {display_file}."
+
+
+def _read_tx11_service_status() -> str:
+    sv = shutil.which("sv")
+    if not sv:
+        return "- sv was not found, so tx11 service status cannot be checked."
+    try:
+        completed = subprocess.run(
+            [sv, "status", "tx11"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+    except Exception as exc:
+        return f"- tx11 service status could not be checked: {exc}."
+    output = " ".join(
+        value.strip()
+        for value in (completed.stdout, completed.stderr)
+        if value and value.strip()
+    )
+    if output:
+        return f"- tx11 service status: {output}."
+    return f"- tx11 service status command exited with code {completed.returncode}."
+
+
+def _find_browser_binary() -> str:
     candidates = [
-        config.binary_path,
         shutil.which("chromium-browser"),
         shutil.which("chromium"),
-        "/data/data/com.termux/files/usr/lib/chromium/chrome",
+        get_termux_chromium_binary(),
     ]
     for candidate in candidates:
         if candidate and Path(candidate).exists():
             return str(candidate)
-    raise BrowserAutomationError("Chromium binary was not found. Set browser.binary_path in config.txt.")
+    raise BrowserAutomationError("Chromium binary was not found. Install Chromium or make chromium-browser available in PATH.")
 
 
-def _find_driver_binary(config: BrowserConfig) -> str:
+def _fit_browser_to_screen(driver: "WebDriver") -> None:
+    try:
+        width, height = driver.execute_script("return [screen.availWidth || screen.width, screen.availHeight || screen.height]")
+        driver.set_window_rect(0, 0, int(width), int(height))
+    except Exception:
+        try:
+            driver.maximize_window()
+        except Exception:
+            return
+
+
+def _find_driver_binary() -> str:
     candidates = [
-        config.driver_path,
         shutil.which("chromedriver"),
     ]
     for candidate in candidates:
         if candidate and Path(candidate).exists():
             return str(candidate)
-    raise BrowserAutomationError("ChromeDriver binary was not found. Set browser.driver_path in config.txt.")
+    raise BrowserAutomationError("ChromeDriver binary was not found. Install ChromeDriver or make chromedriver available in PATH.")
 
 
-def _prepare_undetected_driver_binary(config: BrowserConfig) -> str:
-    source = Path(_find_driver_binary(config))
-    target_dir = Path.home() / ".streakify" / "drivers"
+def _prepare_undetected_driver_binary() -> str:
+    source = Path(_find_driver_binary())
+    target_dir = get_driver_cache_dir()
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / "undetected-chromedriver"
     try:
