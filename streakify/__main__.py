@@ -20,7 +20,7 @@ def _create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="streakify")
     parser.add_argument("--config", default="config.txt", help="Path to config file.")
     subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("tiktok", help="Check TikTok browser session.")
+    subparsers.add_parser("tiktok", help="Run TikTok message flow.")
     return parser
 
 
@@ -36,12 +36,9 @@ def _run_tiktok_command(config_path: str) -> int:
         return 1
     print(f"Status: {result.status}")
     print(f"Message: {result.message}")
-    print(f"Chats found: {result.chats_found}")
     print(f"Selected chats: {result.selected_chats}")
     print(f"Sent chats: {result.sent_chats}")
-    print(f"Dry run: {str(result.dry_run).lower()}")
-    print(f"Headless: {str(result.headless).lower()}")
-    if result.status == "ok":
+    if result.status in {"ok", "skipped"}:
         return 0
     return 2
 
