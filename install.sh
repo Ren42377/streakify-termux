@@ -1,10 +1,10 @@
-#!/data/data/com.termux/files/usr/bin/sh
+#!/bin/sh
 
 set -eu
 
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
-if [ "${PREFIX:-}" != "/data/data/com.termux/files/usr" ]; then
+if [ -z "${PREFIX:-}" ] || [ ! -d "$PREFIX" ]; then
     echo "This installer must run inside Termux."
     exit 1
 fi
@@ -41,4 +41,4 @@ echo "ChromeDriver version:"
 chromedriver --version
 
 echo "Installation complete."
-echo "Run ./run.sh to check the TikTok session."
+echo "Run ./run.sh to start the TikTok flow."
