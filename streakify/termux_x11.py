@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import signal
 import shutil
 import subprocess
 import time
@@ -101,13 +102,25 @@ class TermuxX11Session:
         os.environ["DISPLAY"] = self.previous_display
 
 
+def stop_termux_x11_server(display: str = ":0") -> None:
+    pid = _read_recorded_server_pid(display)
+    if pid is not None:
+        _terminate_pid(pid, display)
+    else:
+        for found_pid in _find_termux_x11_pids(display):
+            _terminate_pid(found_pid, display)
+    _clear_recorded_server_pid()
+    _close_termux_x11_app()
+
+
 def _open_termux_x11_app() -> None:
     command = shutil.which("am")
     if command is None:
         raise TermuxX11Error("Android activity manager was not found. Open Termux X11 manually and set DISPLAY.")
+    package_name = _termux_x11_package_name()
     try:
         completed = subprocess.run(
-            [command, "start", "--user", "0", "-n", "com.termux.x11/.MainActivity"],
+            [command, "start", "--user", "0", "-n", f"{package_name}/.MainActivity"],
             capture_output=True,
             check=False,
             text=True,
@@ -150,6 +163,52 @@ def _is_termux_x11_running(display: str) -> bool:
         if display == ":0":
             return True
     return False
+
+
+def _find_termux_x11_pids(display: str) -> list[int]:
+    try:
+        completed = subprocess.run(
+            ["ps", "-ef"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+    except Exception:
+        return []
+    pids = []
+    for line in completed.stdout.splitlines():
+        if "termux-x11" not in line:
+            continue
+        parts = line.split()
+        if not parts:
+            continue
+        if display not in parts and display != ":0":
+            continue
+        try:
+            pids.append(int(parts[1]))
+        except (IndexError, ValueError):
+            continue
+    return pids
+
+
+def _terminate_pid(pid: int, display: str) -> None:
+    if not _pid_is_termux_x11(pid, display):
+        return
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except OSError:
+        return
+    for _ in range(50):
+        if not _pid_is_termux_x11(pid, display):
+            return
+        time.sleep(0.1)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        return
 
 
 def _pid_file_path():
@@ -211,7 +270,7 @@ def _close_termux_x11_app() -> None:
         return
     try:
         subprocess.run(
-            [command, "force-stop", "com.termux.x11"],
+            [command, "force-stop", _termux_x11_package_name()],
             capture_output=True,
             check=False,
             text=True,
@@ -219,3 +278,7 @@ def _close_termux_x11_app() -> None:
         )
     except Exception:
         return
+
+
+def _termux_x11_package_name() -> str:
+    return os.environ.get("TERMUX_X11_ANDROID_PACKAGE", "").strip() or "com.termux.x11"

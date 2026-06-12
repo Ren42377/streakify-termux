@@ -25,6 +25,7 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig) -> "WebDrive
     headless = config.headless
     browser_binary = _find_browser_binary()
     driver_binary = _prepare_undetected_driver_binary()
+    chromium_version = _read_chromium_version(browser_binary)
     profile_dir.mkdir(parents=True, exist_ok=True)
     _clear_stale_profile_locks(profile_dir)
     try:
@@ -40,13 +41,16 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig) -> "WebDrive
     options.page_load_strategy = "eager"
     if headless:
         options.add_argument("--headless=new")
+        if chromium_version:
+            options.add_argument(f"--user-agent={_desktop_user_agent(chromium_version)}")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     if headless:
-        options.add_argument("--window-size=1280,900")
+        options.add_argument("--window-size=1280,2160")
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-background-networking")
+    _add_fake_media_options(options, config.fake_video_path)
     driver = None
     try:
         driver = uc.Chrome(
@@ -55,7 +59,7 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig) -> "WebDrive
             browser_executable_path=browser_binary,
             user_data_dir=str(profile_dir),
             use_subprocess=True,
-            version_main=_read_chromium_major_version(browser_binary),
+            version_main=_major_version(chromium_version),
         )
         if not headless:
             _fit_browser_to_screen(driver)
@@ -68,6 +72,14 @@ def create_browser_driver(profile_dir: Path, config: BrowserConfig) -> "WebDrive
             except Exception:
                 pass
         raise BrowserAutomationError(f"Undetected browser failed to start: {exc}") from exc
+
+
+def _add_fake_media_options(options: object, fake_video_path: Path | None) -> None:
+    if fake_video_path is None:
+        return
+    options.add_argument("--use-fake-ui-for-media-stream")
+    options.add_argument("--use-fake-device-for-media-stream")
+    options.add_argument(f"--use-file-for-fake-video-capture={fake_video_path}")
 
 
 def _find_browser_binary() -> str:
@@ -149,6 +161,10 @@ def _prepare_undetected_driver_binary() -> str:
 
 
 def _read_chromium_major_version(browser_binary: str) -> int | None:
+    return _major_version(_read_chromium_version(browser_binary))
+
+
+def _read_chromium_version(browser_binary: str) -> str:
     try:
         completed = subprocess.run(
             [browser_binary, "--version"],
@@ -158,11 +174,21 @@ def _read_chromium_major_version(browser_binary: str) -> int | None:
             timeout=10,
         )
     except Exception:
-        return None
+        return ""
     for value in completed.stdout.split():
         if value and value[0].isdigit():
-            try:
-                return int(value.split(".", 1)[0])
-            except ValueError:
-                return None
-    return None
+            return value
+    return ""
+
+
+def _major_version(version: str) -> int | None:
+    if not version:
+        return None
+    try:
+        return int(version.split(".", 1)[0])
+    except ValueError:
+        return None
+
+
+def _desktop_user_agent(version: str) -> str:
+    return f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36"

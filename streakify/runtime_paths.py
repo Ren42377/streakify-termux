@@ -19,6 +19,22 @@ def get_driver_cache_dir() -> Path:
     return get_streakify_home() / ".drivers"
 
 
+def get_media_cache_dir() -> Path:
+    return get_streakify_home() / "media"
+
+
+def get_scheduler_state_path() -> Path:
+    return get_streakify_home() / "scheduler-state.txt"
+
+
+def get_snapchat_camera_folder() -> Path:
+    return Path(__file__).resolve().parent.parent / "assets"
+
+
+def get_snapchat_camera_source() -> Path:
+    return get_snapchat_camera_folder() / "snapchat-camera.jpg"
+
+
 def get_duolingo_model_dir() -> Path:
     return Path(__file__).resolve().parent / "models" / "duolingo"
 

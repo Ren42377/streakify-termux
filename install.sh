@@ -25,6 +25,26 @@ config_enabled() {
     [ "$value" = "true" ]
 }
 
+android_package_exists() {
+    package_name=$1
+    if pm path "$package_name" >/dev/null 2>&1; then
+        return 0
+    fi
+    if pm path --user 0 "$package_name" >/dev/null 2>&1; then
+        return 0
+    fi
+    listed=$(pm list packages "$package_name" 2>/dev/null || true)
+    for package_line in $listed; do
+        if [ "$package_line" = "package:$package_name" ]; then
+            return 0
+        fi
+    done
+    if command -v cmd >/dev/null 2>&1 && cmd package path "$package_name" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
 if [ -z "${PREFIX:-}" ] || [ ! -d "$PREFIX" ]; then
     echo "This installer must run inside Termux."
     exit 1
@@ -47,6 +67,12 @@ else
     NEEDS_TFLITE=false
 fi
 
+if config_enabled snapchat; then
+    NEEDS_FFMPEG=true
+else
+    NEEDS_FFMPEG=false
+fi
+
 echo "Updating Termux packages."
 pkg update -y
 
@@ -55,6 +81,7 @@ pkg install -y x11-repo
 pkg install -y python
 pkg install -y chromium
 pkg install -y termux-x11-nightly
+pkg install -y termux-services
 if ! command -v stockfish >/dev/null 2>&1; then
     echo "Installing Stockfish for chess automation."
     if ! pkg install -y stockfish; then
@@ -79,6 +106,14 @@ if ! python -c "import tflite_runtime.interpreter" >/dev/null 2>&1; then
         else
             echo "Duolingo AI vision will stay disabled until python-tflite-runtime is installed."
         fi
+    fi
+fi
+if [ "$NEEDS_FFMPEG" = true ] && ! command -v ffmpeg >/dev/null 2>&1; then
+    echo "Installing FFmpeg for the Snapchat fake camera."
+    if ! pkg install -y ffmpeg; then
+        echo "FFmpeg is required because Snapchat is enabled in config.txt."
+        echo "Install ffmpeg in Termux or disable snapchat before running install.sh again."
+        exit 1
     fi
 fi
 
@@ -113,16 +148,13 @@ if ! command -v pm >/dev/null 2>&1; then
     exit 1
 fi
 
-TERMUX_X11_PACKAGE=$(pm path com.termux.x11 2>/dev/null || true)
-case "$TERMUX_X11_PACKAGE" in
-    package:*)
-        ;;
-    *)
-        echo "The Termux:X11 Android app package com.termux.x11 was not found."
-        echo "Install the Termux:X11 Android app, then run install.sh again."
-        exit 1
-        ;;
-esac
+TERMUX_X11_ANDROID_PACKAGE=${TERMUX_X11_ANDROID_PACKAGE:-com.termux.x11}
+if ! android_package_exists "$TERMUX_X11_ANDROID_PACKAGE"; then
+    echo "The Termux:X11 Android app package $TERMUX_X11_ANDROID_PACKAGE was not found."
+    echo "If the app is already installed, open Termux:X11 once from Android, then run install.sh again."
+    echo "If your package name is different, run install with TERMUX_X11_ANDROID_PACKAGE set to that package name."
+    exit 1
+fi
 
 if ! command -v stockfish >/dev/null 2>&1; then
     if [ "$NEEDS_STOCKFISH" = true ]; then
@@ -147,6 +179,16 @@ else
     echo "TensorFlow Lite runtime is not available. Duolingo AI vision is disabled."
 fi
 
+if command -v ffmpeg >/dev/null 2>&1; then
+    echo "FFmpeg command:"
+    command -v ffmpeg
+elif [ "$NEEDS_FFMPEG" = true ]; then
+    echo "ffmpeg was not found, but Snapchat is enabled in config.txt."
+    exit 1
+else
+    echo "ffmpeg was not found. Snapchat automation will not run until ffmpeg is installed."
+fi
+
 echo "Chromium version:"
 "$CHROMIUM_BINARY" --version
 
@@ -156,5 +198,28 @@ chromedriver --version
 echo "Termux X11 command:"
 command -v termux-x11
 
+echo "Installing Streakify scheduler service."
+chmod +x "$PROJECT_DIR/run.sh" "$PROJECT_DIR/schedule.sh"
+SERVICE_DIR="$PREFIX/var/service/streakify-scheduler"
+mkdir -p "$SERVICE_DIR/log"
+cat > "$SERVICE_DIR/run" <<EOF
+#!/bin/sh
+exec 2>&1
+cd "$PROJECT_DIR"
+exec sh "$PROJECT_DIR/schedule.sh"
+EOF
+cat > "$SERVICE_DIR/log/run" <<'EOF'
+#!/bin/sh
+LOG_DIR="${STREAKIFY_HOME:-$HOME/.streakify}/logs/streakify-scheduler"
+mkdir -p "$LOG_DIR"
+exec svlogd -tt "$LOG_DIR"
+EOF
+chmod +x "$SERVICE_DIR/run" "$SERVICE_DIR/log/run"
+if command -v sv >/dev/null 2>&1; then
+    sv up streakify-scheduler >/dev/null 2>&1 || true
+fi
+
 echo "Installation complete."
 echo "Run ./run.sh to start all enabled flows."
+echo "Run sh schedule.sh to start the scheduler manually."
+echo "The scheduler service reads schedule.enabled and schedule.time from config.txt."

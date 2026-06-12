@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import argparse
 from collections.abc import Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -9,8 +11,15 @@ from streakify.browser import BrowserAutomationError, create_browser_driver
 from streakify.chess import ChessAutomationError, ChessClient, run_chess_with_driver
 from streakify.config import AppConfig, StreakifyConfigError, load_config
 from streakify.duolingo import DuolingoAutomationError, DuolingoClient, run_duolingo_with_driver
+from streakify.notifications import notify
+from streakify.snapchat import SnapchatAutomationError, SnapchatClient, run_snapchat_with_driver
+from streakify.snapchat_camera import (
+    SnapchatCameraError,
+    is_ffmpeg_available,
+    prepare_snapchat_camera,
+)
 from streakify.stockfish import is_stockfish_available
-from streakify.termux_x11 import TermuxX11Error, TermuxX11Session
+from streakify.termux_x11 import TermuxX11Error, TermuxX11Session, stop_termux_x11_server
 from streakify.tiktok import TikTokAutomationError, TikTokClient, run_tiktok_with_driver
 
 if TYPE_CHECKING:
@@ -62,45 +71,113 @@ PLATFORMS = (
         dependency_available=is_stockfish_available,
         dependency_error="Stockfish was not found in PATH. Install stockfish in Termux and make sure the stockfish command works.",
     ),
+    PlatformAdapter(
+        key="snapchat",
+        name="Snapchat",
+        enabled=lambda config: config.snapchat_enabled,
+        create_client=SnapchatClient,
+        check_login=lambda client: client.check_session(),
+        open_login=lambda client: client.open_login(),
+        run=run_snapchat_with_driver,
+        dependency_available=is_ffmpeg_available,
+        dependency_error="FFmpeg was not found in PATH. Install ffmpeg in Termux.",
+    ),
 )
 
+_TERMUX_X11_USED = False
 
-def main() -> int:
+
+def main(argv: Sequence[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
     )
-    return _run_configured_platforms()
+    args = _parse_args(argv)
+    return _run_configured_platforms(args.platforms)
 
 
-def _run_configured_platforms() -> int:
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="streakify")
+    parser.add_argument(
+        "--platform",
+        action="append",
+        choices=tuple(platform.key for platform in PLATFORMS),
+        dest="platforms",
+    )
+    return parser.parse_args(argv)
+
+
+def _run_configured_platforms(platform_keys: Sequence[str] | None = None) -> int:
+    notify("Streakify", "Run started.")
     try:
         config = load_config()
     except StreakifyConfigError as exc:
         print(f"Config error: {exc}")
-        return 1
+        return _finish(1, "Config error.")
     platforms = _enabled_platforms(config)
+    if platform_keys:
+        platforms = _filter_platforms(platforms, platform_keys)
     if not platforms:
         print("Status: skipped")
         print("Message: All platforms are disabled in config.")
-        return 0
+        return _finish(0, "All platforms are disabled.")
     for platform in platforms:
         if platform.dependency_available is not None and not platform.dependency_available():
             print(f"Automation error: {platform.dependency_error}")
-            return 1
+            return _finish(1, platform.dependency_error)
+    if config.snapchat_enabled:
+        try:
+            fake_video_path = prepare_snapchat_camera(
+                config.snapchat.camera_folder,
+                config.snapchat.camera_mode,
+            )
+        except SnapchatCameraError as exc:
+            print(f"Automation error: {exc}")
+            return _finish(1, str(exc))
+        config = replace(
+            config,
+            browser=replace(config.browser, fake_video_path=fake_video_path),
+        )
     try:
         results, exit_code = _run_platforms_with_login(config, platforms)
         if exit_code is not None:
-            return exit_code
-    except (BrowserAutomationError, TermuxX11Error, TikTokAutomationError, ChessAutomationError, DuolingoAutomationError) as exc:
+            return _finish(exit_code, "Login is required.")
+    except (
+        BrowserAutomationError,
+        TermuxX11Error,
+        TikTokAutomationError,
+        ChessAutomationError,
+        DuolingoAutomationError,
+        SnapchatAutomationError,
+    ) as exc:
         print(f"Automation error: {exc}")
-        return 1
-    return _print_all_results(results)
+        return _finish(1, str(exc))
+    return _finish(_print_all_results(results), _summarize_results(results))
+
+
+def _finish(exit_code: int, message: str) -> int:
+    status = "finished" if exit_code == 0 else "failed"
+    if exit_code != 0 and _TERMUX_X11_USED:
+        stop_termux_x11_server()
+    notify("Streakify", f"Run {status}: {message}")
+    return exit_code
+
+
+def _summarize_results(results) -> str:
+    parts = []
+    for name, result in results:
+        parts.append(f"{name} {result.status}")
+    return ", ".join(parts) if parts else "No result."
 
 
 def _enabled_platforms(config: AppConfig) -> list[PlatformAdapter]:
     return [platform for platform in PLATFORMS if platform.enabled(config)]
+
+
+def _filter_platforms(platforms: Sequence[PlatformAdapter], platform_keys: Sequence[str]) -> list[PlatformAdapter]:
+    requested = set(platform_keys)
+    return [platform for platform in platforms if platform.key in requested]
 
 
 def _run_platforms_with_login(
@@ -109,7 +186,7 @@ def _run_platforms_with_login(
 ) -> tuple[list[tuple[str, Any]], int | None]:
     driver = None
     handles: dict[str, str] = {}
-    session = TermuxX11Session(open_app=not config.browser.headless)
+    session = nullcontext() if config.browser.headless else _termux_x11_session()
     with session:
         try:
             driver = create_browser_driver(config.browser.profile_dir, config.browser)
@@ -146,7 +223,7 @@ def _run_interactive_login(config: AppConfig, platforms: Sequence[PlatformAdapte
     driver = None
     visible_browser = replace(config.browser, headless=False)
     handles: dict[str, str] = {}
-    with TermuxX11Session():
+    with _termux_x11_session():
         try:
             driver = create_browser_driver(config.browser.profile_dir, visible_browser)
             _open_login_tabs(driver, config, handles, platforms)
@@ -157,9 +234,24 @@ def _run_interactive_login(config: AppConfig, platforms: Sequence[PlatformAdapte
             _quit_driver_safely(driver)
 
 
+def _termux_x11_session() -> TermuxX11Session:
+    global _TERMUX_X11_USED
+    _TERMUX_X11_USED = True
+    return TermuxX11Session()
+
+
 def _quit_driver_safely(driver: "WebDriver | None") -> None:
     if driver is None:
         return
+    try:
+        for handle in list(driver.window_handles):
+            try:
+                driver.switch_to.window(handle)
+                driver.close()
+            except Exception:
+                continue
+    except Exception:
+        pass
     try:
         driver.quit()
     except Exception:
@@ -261,6 +353,12 @@ def _print_all_results(results) -> int:
             print(f"{name} page opened: {result.page_opened}")
         if hasattr(result, "completed"):
             print(f"{name} completed: {result.completed}")
+        if hasattr(result, "target_count"):
+            print(f"{name} targets: {result.target_count}")
+            print(f"{name} sent: {result.sent_count}")
+            print(f"{name} failed: {result.failed_count}")
+            if result.failed_usernames:
+                print(f"{name} failed usernames: {', '.join(result.failed_usernames)}")
         if result.status not in {"ok", "skipped"}:
             exit_code = 2
     return exit_code
