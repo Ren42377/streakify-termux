@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
-import sys
 import time
 from typing import TYPE_CHECKING
 
-from streakify.browser import BrowserAutomationError, build_x11_diagnostic_message, click_element, create_browser_driver
+from streakify.browser import click_element
 from streakify.config import AppConfig
 from streakify.results import TikTokRunResult
 
@@ -33,13 +31,6 @@ class TikTokAutomationError(RuntimeError):
     pass
 
 
-def _create_tiktok_driver(config: AppConfig, force_headful: bool = False) -> "WebDriver":
-    try:
-        return create_browser_driver(config.browser.profile_dir, config.browser, force_headful=force_headful)
-    except BrowserAutomationError as exc:
-        raise TikTokAutomationError(str(exc)) from exc
-
-
 class TikTokClient:
     def __init__(self, driver: "WebDriver", config: AppConfig):
         self.driver = driver
@@ -51,6 +42,10 @@ class TikTokClient:
             self.driver.get(self.config.tiktok.messages_url)
         self.wait_for_page()
 
+    def open_login(self) -> None:
+        self.driver.get(self.config.tiktok.login_url)
+        self.wait_for_page()
+
     def wait_for_page(self) -> None:
         from selenium.webdriver.common.by import By
         from selenium.webdriver.support.ui import WebDriverWait
@@ -59,22 +54,8 @@ class TikTokClient:
             lambda driver: driver.find_elements(By.TAG_NAME, "body")
         )
 
-    def has_login_prompt(self) -> bool:
-        from selenium.webdriver.common.by import By
-
-        selectors = (
-            (By.XPATH, "//button[contains(normalize-space(), 'Log in')]"),
-            (By.XPATH, "//*[normalize-space()='Log in']"),
-            (By.XPATH, "//*[normalize-space()='Sign up']"),
-        )
-        for by, value in selectors:
-            try:
-                elements = self.driver.find_elements(by, value)
-                if any(element.is_displayed() for element in elements):
-                    return True
-            except Exception:
-                continue
-        return False
+    def is_logged_in(self) -> bool:
+        return self.config.tiktok.messages_url in self.driver.current_url
 
     def find_chat_items(self) -> list["WebElement"]:
         from selenium.webdriver.common.by import By
@@ -115,16 +96,21 @@ class TikTokClient:
         raise TikTokAutomationError("Message input was not found.")
 
     def check_session(self) -> TikTokRunResult:
-        self.open_messages()
+        self.driver.get(self.config.tiktok.messages_url)
+        self.wait_for_page()
         deadline = time.monotonic() + self.timeout_seconds
+        login_prompt_deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
-            if self.has_login_prompt():
-                return self._result("login_required", "TikTok login is required.")
+            if not self.is_logged_in():
+                if time.monotonic() >= login_prompt_deadline:
+                    return self._result("login_required", "TikTok login is required.")
+                time.sleep(0.5)
+                continue
             chats = self.find_chat_items()
             if chats:
                 return self._result("ok", "TikTok session is active.")
             time.sleep(1)
-        if self.has_login_prompt():
+        if not self.is_logged_in():
             return self._result("login_required", "TikTok login is required.")
         return self._result("no_chats", "No visible TikTok chats were found.")
 
@@ -171,41 +157,6 @@ class TikTokClient:
             sent_chats=sent,
         )
 
-    def wait_for_manual_login(self) -> TikTokRunResult:
-        try:
-            self.driver.get(self.config.tiktok.login_url)
-            self.wait_for_page()
-            print("Log in to TikTok in the browser window.")
-            if not sys.stdin.isatty():
-                return self.wait_for_login_redirect()
-            while True:
-                try:
-                    input("Press Enter here after login is complete.")
-                except EOFError:
-                    return self.wait_for_login_redirect()
-                result = self.check_session()
-                if result.status != "login_required":
-                    return result
-                print("Login is still not active.")
-        except Exception as exc:
-            if _is_closed_window_error(exc):
-                raise TikTokAutomationError("Browser window was manually closed.") from exc
-            raise
-
-    def wait_for_login_redirect(self) -> TikTokRunResult:
-        deadline = time.monotonic() + self.config.tiktok.login_wait_seconds
-        while time.monotonic() < deadline:
-            try:
-                result = self.check_session()
-                if result.status != "login_required":
-                    return result
-            except Exception as exc:
-                if _is_closed_window_error(exc):
-                    raise TikTokAutomationError("Browser window was manually closed.") from exc
-                raise
-            time.sleep(2)
-        raise TikTokAutomationError("Login was not completed before timeout.")
-
     def _result(self, status: str, message: str) -> TikTokRunResult:
         return TikTokRunResult(
             status=status,
@@ -233,40 +184,18 @@ class TikTokClient:
         return ""
 
 
-def run_tiktok(config: AppConfig) -> TikTokRunResult:
+def run_tiktok_with_driver(
+    driver: "WebDriver",
+    config: AppConfig,
+    session_result: TikTokRunResult | None = None,
+) -> TikTokRunResult:
     if not config.tiktok_enabled:
         return TikTokRunResult(
             status="skipped",
             message="TikTok is disabled in config.",
         )
-    driver = _create_tiktok_driver(config)
-    headless = config.browser.headless
-    try:
-        client = TikTokClient(driver, config)
-        result = client.check_session()
-        if result.status != "login_required":
-            if result.status != "ok":
-                return result
-            return client.run_messages(result)
-        if headless:
-            if not os.environ.get("DISPLAY"):
-                return TikTokRunResult(
-                    status="login_required",
-                    message=build_x11_diagnostic_message(
-                        "TikTok login is required, but manual login needs a headful browser."
-                    ),
-                )
-            driver.quit()
-            driver = _create_tiktok_driver(config, force_headful=True)
-            client = TikTokClient(driver, config)
-        login_result = client.wait_for_manual_login()
-        if login_result.status != "ok":
-            return login_result
-        return client.run_messages(login_result)
-    finally:
-        driver.quit()
-
-
-def _is_closed_window_error(error: Exception) -> bool:
-    message = str(error).lower()
-    return "no such window" in message or "disconnected" in message
+    client = TikTokClient(driver, config)
+    result = session_result or client.check_session()
+    if result.status != "ok":
+        return result
+    return client.run_messages(result)
