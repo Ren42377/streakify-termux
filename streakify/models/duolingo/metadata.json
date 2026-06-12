@@ -1,0 +1,14 @@
+{
+  "name": "duolingo_chess_tile_classifier",
+  "model_file": "duolingo_chess.tflite",
+  "input_size": 48,
+  "input_channels": 3,
+  "labels_file": "labels.json",
+  "classes": 13,
+  "training_samples": 20800,
+  "validation_samples": 4160,
+  "validation_accuracy": 1.0,
+  "validation_loss": 0.0001388293458148837,
+  "final_training_accuracy": 0.9989423155784607,
+  "tensorflow_version": "2.20.0"
+}
