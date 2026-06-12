@@ -37,7 +37,7 @@ browser.headless=true
 # max_chats  : how many chats to process per run (positive integer)
 
 tiktok.message=🔥
-tiktok.max_chats=10
+tiktok.max_chats=1
 
 
 # ------------------------------------------------------------
@@ -61,7 +61,7 @@ chess.engine_time=0.1
 #                 random  = pick a random image each run
 #                 newest  = pick the most recently modified image
 
-snapchat.usernames=
+snapchat.usernames=user1,user2
 snapchat.camera_folder=assets
 snapchat.camera_mode=random
 
