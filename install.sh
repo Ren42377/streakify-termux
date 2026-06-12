@@ -2,8 +2,35 @@
 
 set -eu
 
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+export PIP_NO_INPUT=1
+
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 CONFIG_FILE="$PROJECT_DIR/config.txt"
+
+pkg_update() {
+    pkg update -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold"
+}
+
+pkg_upgrade() {
+    pkg upgrade -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold"
+}
+
+pkg_install() {
+    pkg install -y \
+        -o Dpkg::Options::="--force-confdef" \
+        -o Dpkg::Options::="--force-confold" \
+        "$@"
+}
+
+python_has_tflite_stack() {
+    python -c "import numpy; import tflite_runtime.interpreter" >/dev/null 2>&1
+}
 
 config_enabled() {
     key=$1
@@ -73,18 +100,24 @@ else
     NEEDS_FFMPEG=false
 fi
 
-echo "Updating Termux packages."
-pkg update -y
+echo "Updating Termux package lists."
+pkg_update
+
+echo "Installing X11 repository."
+pkg_install x11-repo
+
+echo "Refreshing package lists after enabling X11 repository."
+pkg_update
+
+echo "Upgrading installed Termux packages."
+pkg_upgrade
 
 echo "Installing system packages."
-pkg install -y x11-repo
-pkg install -y python
-pkg install -y chromium
-pkg install -y termux-x11-nightly
-pkg install -y termux-services
+pkg_install python chromium termux-x11-nightly termux-services
+
 if ! command -v stockfish >/dev/null 2>&1; then
     echo "Installing Stockfish for chess automation."
-    if ! pkg install -y stockfish; then
+    if ! pkg_install stockfish; then
         echo "Stockfish could not be installed automatically."
         if [ "$NEEDS_STOCKFISH" = true ]; then
             echo "Stockfish is required because Chess.com or Duolingo is enabled in config.txt."
@@ -95,9 +128,10 @@ if ! command -v stockfish >/dev/null 2>&1; then
         fi
     fi
 fi
-if ! python -c "import tflite_runtime.interpreter" >/dev/null 2>&1; then
+
+if ! python_has_tflite_stack; then
     echo "Installing TensorFlow Lite runtime for Duolingo vision."
-    if ! pkg install -y python-tflite-runtime; then
+    if ! pkg_install python-tflite-runtime; then
         echo "python-tflite-runtime could not be installed automatically."
         if [ "$NEEDS_TFLITE" = true ]; then
             echo "python-tflite-runtime is required because Duolingo is enabled in config.txt."
@@ -108,9 +142,10 @@ if ! python -c "import tflite_runtime.interpreter" >/dev/null 2>&1; then
         fi
     fi
 fi
+
 if [ "$NEEDS_FFMPEG" = true ] && ! command -v ffmpeg >/dev/null 2>&1; then
     echo "Installing FFmpeg for the Snapchat fake camera."
-    if ! pkg install -y ffmpeg; then
+    if ! pkg_install ffmpeg; then
         echo "FFmpeg is required because Snapchat is enabled in config.txt."
         echo "Install ffmpeg in Termux or disable snapchat before running install.sh again."
         exit 1
@@ -118,7 +153,7 @@ if [ "$NEEDS_FFMPEG" = true ] && ! command -v ffmpeg >/dev/null 2>&1; then
 fi
 
 echo "Installing Python dependencies."
-python -m pip install -r "$PROJECT_DIR/requirements.txt"
+python -m pip install --no-input --disable-pip-version-check -r "$PROJECT_DIR/requirements.txt"
 
 CHROMIUM_BINARY=$(command -v chromium-browser 2>/dev/null || true)
 if [ -z "$CHROMIUM_BINARY" ]; then
@@ -168,15 +203,15 @@ else
     command -v stockfish
 fi
 
-if python -c "import tflite_runtime.interpreter" >/dev/null 2>&1; then
-    echo "TensorFlow Lite runtime is available."
+if python_has_tflite_stack; then
+    echo "TensorFlow Lite runtime and numpy are available."
 else
     if [ "$NEEDS_TFLITE" = true ]; then
-        echo "TensorFlow Lite runtime is not available, but Duolingo is enabled in config.txt."
+        echo "TensorFlow Lite runtime or numpy is not available, but Duolingo is enabled in config.txt."
         echo "Install python-tflite-runtime in Termux or disable duolingo before running install.sh again."
         exit 1
     fi
-    echo "TensorFlow Lite runtime is not available. Duolingo AI vision is disabled."
+    echo "TensorFlow Lite runtime or numpy is not available. Duolingo AI vision is disabled."
 fi
 
 if command -v ffmpeg >/dev/null 2>&1; then
@@ -200,21 +235,26 @@ command -v termux-x11
 
 echo "Installing Streakify scheduler service."
 chmod +x "$PROJECT_DIR/run.sh" "$PROJECT_DIR/schedule.sh"
+
 SERVICE_DIR="$PREFIX/var/service/streakify-scheduler"
 mkdir -p "$SERVICE_DIR/log"
+
 cat > "$SERVICE_DIR/run" <<EOF
 #!/bin/sh
 exec 2>&1
 cd "$PROJECT_DIR"
 exec sh "$PROJECT_DIR/schedule.sh"
 EOF
+
 cat > "$SERVICE_DIR/log/run" <<'EOF'
 #!/bin/sh
 LOG_DIR="${STREAKIFY_HOME:-$HOME/.streakify}/logs/streakify-scheduler"
 mkdir -p "$LOG_DIR"
 exec svlogd -tt "$LOG_DIR"
 EOF
+
 chmod +x "$SERVICE_DIR/run" "$SERVICE_DIR/log/run"
+
 if command -v sv >/dev/null 2>&1; then
     sv up streakify-scheduler >/dev/null 2>&1 || true
 fi
