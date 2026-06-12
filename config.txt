@@ -1,4 +1,7 @@
-tiktok=true
-browser.headless=true
+tiktok=false
+chess=false
+duolingo=true
+browser.headless=false
 tiktok.message=🔥
 tiktok.max_chats=10
+chess.engine_time=0.1

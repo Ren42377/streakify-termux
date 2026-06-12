@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from streakify.runtime_paths import debug_runtime_paths as _debug_runtime_paths
 from streakify.runtime_paths import get_auth_profile_dir
 
 
@@ -22,7 +21,6 @@ class BrowserConfig:
 class TikTokConfig:
     login_url: str
     messages_url: str
-    login_wait_seconds: int
     message: str
     max_chats: int
     chat_open_delay_ms: int
@@ -30,28 +28,50 @@ class TikTokConfig:
 
 
 @dataclass(frozen=True)
+class ChessConfig:
+    login_url: str
+    puzzles_url: str
+    engine_time: float
+    opponent_wait_seconds: int
+
+
+@dataclass(frozen=True)
+class DuolingoConfig:
+    chess_match_url: str
+
+
+@dataclass(frozen=True)
 class AppConfig:
     tiktok_enabled: bool
+    chess_enabled: bool
+    duolingo_enabled: bool
     browser: BrowserConfig
     tiktok: TikTokConfig
+    chess: ChessConfig
+    duolingo: DuolingoConfig
 
 
 BROWSER_TIMEOUT_MS = 30000
 TIKTOK_LOGIN_URL = "https://www.tiktok.com/login"
 TIKTOK_MESSAGES_URL = "https://www.tiktok.com/messages"
-TIKTOK_LOGIN_WAIT_SECONDS = 300
 TIKTOK_CHAT_OPEN_DELAY_MS = 1500
 TIKTOK_SEND_DELAY_MS = 1000
+CHESS_LOGIN_URL = "https://www.chess.com/login"
+CHESS_PUZZLES_URL = "https://www.chess.com/puzzles/rated"
+CHESS_OPPONENT_WAIT_SECONDS = 30
+DUOLINGO_CHESS_MATCH_URL = "https://www.duolingo.com/chess-match"
 
 REQUIRED_KEYS = {
     "tiktok",
+    "chess",
+    "duolingo",
     "browser.headless",
     "tiktok.message",
     "tiktok.max_chats",
+    "chess.engine_time",
 }
 
 DEPRECATED_KEYS = {
-    "browser.profile_dir": "browser.profile_dir is no longer supported. Use STREAKIFY_HOME to change runtime data location.",
     "browser.binary_path": "browser.binary_path is no longer supported. Chromium is detected automatically.",
     "browser.driver_path": "browser.driver_path is no longer supported. ChromeDriver is detected automatically.",
     "browser.timeout_ms": "browser.timeout_ms is no longer configurable.",
@@ -61,13 +81,23 @@ DEPRECATED_KEYS = {
     "tiktok.message_template": "tiktok.message_template is no longer supported. Use tiktok.message.",
     "tiktok.chat_open_delay_ms": "tiktok.chat_open_delay_ms is no longer configurable.",
     "tiktok.send_delay_ms": "tiktok.send_delay_ms is no longer configurable.",
+    "chess.login_url": "chess.login_url is no longer configurable.",
+    "chess.puzzles_url": "chess.puzzles_url is no longer configurable.",
+    "chess.login_wait_seconds": "chess.login_wait_seconds is no longer configurable.",
+    "chess.stockfish_bin": "chess.stockfish_bin is no longer supported. Install stockfish in Termux and make sure stockfish is in PATH.",
+    "chess.max_player_moves": "chess.max_player_moves is no longer supported. Chess.com stops when completion or no opponent move is detected.",
+    "duolingo.login_url": "duolingo.login_url is no longer configurable.",
+    "duolingo.chess_match_url": "duolingo.chess_match_url is no longer configurable.",
 }
 
 EXPECTED_CONFIG = """Expected config.txt:
 tiktok=true
-browser.headless=false
-tiktok.message=Keep the streak alive.
-tiktok.max_chats=1"""
+chess=true
+duolingo=false
+browser.headless=true
+tiktok.message=🔥
+tiktok.max_chats=10
+chess.engine_time=0.4"""
 
 
 def load_config(path: str | Path = "config.txt") -> AppConfig:
@@ -78,6 +108,8 @@ def load_config(path: str | Path = "config.txt") -> AppConfig:
     _validate_required_keys(values)
     return AppConfig(
         tiktok_enabled=_read_bool(values, "tiktok"),
+        chess_enabled=_read_bool(values, "chess"),
+        duolingo_enabled=_read_bool(values, "duolingo"),
         browser=BrowserConfig(
             headless=_read_bool(values, "browser.headless"),
             timeout_ms=BROWSER_TIMEOUT_MS,
@@ -86,29 +118,21 @@ def load_config(path: str | Path = "config.txt") -> AppConfig:
         tiktok=TikTokConfig(
             login_url=TIKTOK_LOGIN_URL,
             messages_url=TIKTOK_MESSAGES_URL,
-            login_wait_seconds=TIKTOK_LOGIN_WAIT_SECONDS,
             message=_read_required_text(values, "tiktok.message"),
             max_chats=_read_positive_int(values, "tiktok.max_chats"),
             chat_open_delay_ms=TIKTOK_CHAT_OPEN_DELAY_MS,
             send_delay_ms=TIKTOK_SEND_DELAY_MS,
         ),
+        chess=ChessConfig(
+            login_url=CHESS_LOGIN_URL,
+            puzzles_url=CHESS_PUZZLES_URL,
+            engine_time=_read_positive_float(values, "chess.engine_time"),
+            opponent_wait_seconds=CHESS_OPPONENT_WAIT_SECONDS,
+        ),
+        duolingo=DuolingoConfig(
+            chess_match_url=DUOLINGO_CHESS_MATCH_URL,
+        ),
     )
-
-
-def debug_auth_profile_dir() -> str:
-    return str(get_auth_profile_dir())
-
-
-def debug_runtime_paths() -> dict[str, str]:
-    return _debug_runtime_paths()
-
-
-def debug_tiktok_settings(config: AppConfig) -> dict[str, int | bool]:
-    return {
-        "enabled": config.tiktok_enabled,
-        "message_length": len(config.tiktok.message),
-        "max_chats": config.tiktok.max_chats,
-    }
 
 
 def _read_config_file(path: Path) -> dict[str, str]:
@@ -157,6 +181,16 @@ def _read_positive_int(values: dict[str, str], key: str) -> int:
         value = int(values[key])
     except ValueError as exc:
         _raise_config_error(f"Invalid integer value for {key}: {values[key]}.", exc)
+    if value <= 0:
+        _raise_config_error(f"Config value must be positive for {key}.")
+    return value
+
+
+def _read_positive_float(values: dict[str, str], key: str) -> float:
+    try:
+        value = float(values[key])
+    except ValueError as exc:
+        _raise_config_error(f"Invalid number value for {key}: {values[key]}.", exc)
     if value <= 0:
         _raise_config_error(f"Config value must be positive for {key}.")
     return value
