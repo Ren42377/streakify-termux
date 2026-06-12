@@ -17,6 +17,7 @@ dist/
 .coverage
 htmlcov/
 .auth/
+.drivers/
 .env
 .env.*
 !.env.example
