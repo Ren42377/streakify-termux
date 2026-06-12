@@ -1,7 +1,78 @@
-tiktok=false
-chess=false
+# ============================================================
+# Streakify Configuration
+# ============================================================
+# Edit this file to control which platforms run and how.
+# Lines starting with # are comments and will be ignored.
+# All settings use key=value format. Do not add spaces
+# around the = sign.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# Platform Switches
+# ------------------------------------------------------------
+# Enable (true) or disable (false) each platform.
+# Disabled platforms are skipped entirely.
+
+tiktok=true
+chess=true
 duolingo=true
-browser.headless=false
+snapchat=true
+
+
+# ------------------------------------------------------------
+# Browser
+# ------------------------------------------------------------
+# true  = run Chromium without a visible window (faster)
+# false = run Chromium inside Termux X11 (visible, for debugging)
+# Login sessions always open a visible window regardless.
+
+browser.headless=true
+
+
+# ------------------------------------------------------------
+# TikTok
+# ------------------------------------------------------------
+# message    : text sent to each chat (emoji supported, save as UTF-8)
+# max_chats  : how many chats to process per run (positive integer)
+
 tiktok.message=🔥
 tiktok.max_chats=10
+
+
+# ------------------------------------------------------------
+# Chess.com
+# ------------------------------------------------------------
+# engine_time : Stockfish thinking time in seconds (positive number)
+#               Also used for Duolingo moves.
+#               Lower = faster but weaker moves.
+
 chess.engine_time=0.1
+
+
+# ------------------------------------------------------------
+# Snapchat
+# ------------------------------------------------------------
+# usernames     : comma-separated exact Snapchat usernames
+#                 each one receives one Snap per run
+# camera_folder : folder containing images for the fake camera
+#                 (default: assets)
+# camera_mode   : how to pick an image from the folder
+#                 random  = pick a random image each run
+#                 newest  = pick the most recently modified image
+
+snapchat.usernames=
+snapchat.camera_folder=assets
+snapchat.camera_mode=random
+
+
+# ------------------------------------------------------------
+# Scheduler
+# ------------------------------------------------------------
+# enabled : true = run Streakify automatically once per day
+#           false = manual runs only
+# time    : daily run time in HH:MM (24-hour, local timezone)
+#           Only used when enabled=true.
+
+schedule.enabled=false
+schedule.time=00:00
