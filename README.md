@@ -38,6 +38,7 @@ Done
 | undetected-chromedriver | Anti-detection Chromium driver, installed through pip |
 | Termux X11 | Used for visible login sessions |
 | termux-services | Keeps the optional Streakify scheduler running in Termux |
+| Termux:Boot | Optional but recommended. Restarts the scheduler service after the phone reboots |
 | Termux:API | Optional. Enables Android notifications when `termux-notification` is available |
 | Stockfish | Calculates Chess.com and Duolingo chess moves |
 | python-chess | Reconstructs Duolingo positions and validates legal moves |
@@ -47,6 +48,14 @@ Done
 
 > [!WARNING]
 > **Do not install Termux from the Play Store.** That version is outdated and often breaks package installation. Use [F-Droid](https://f-droid.org/en/packages/com.termux/) or [Termux GitHub releases](https://github.com/termux/termux-app/releases).
+
+### Android App Downloads
+
+- [Termux:API](https://github.com/termux/termux-api/releases/latest)
+- [Termux:X11](https://github.com/termux/termux-x11/releases/tag/nightly)
+- [Termux:Boot](https://github.com/termux/termux-boot/releases/latest)
+
+These links point to the official Termux GitHub repositories. Termux:API also requires the `termux-api` command package inside Termux when its commands are used.
 
 ## Installation
 
@@ -69,8 +78,9 @@ The installer will:
 3. Install TensorFlow Lite runtime when the Termux package is available.
 4. Install Python dependencies from `requirements.txt` (selenium, setuptools, undetected-chromedriver, chess).
 5. Verify that Chromium, ChromeDriver, the Termux X11 command, and the Termux:X11 Android app are available.
-6. Install the `streakify-scheduler` Termux service.
-7. Stop with a clear error if Stockfish is missing while Chess.com or Duolingo is enabled, or if TensorFlow Lite runtime is missing while Duolingo is enabled.
+6. Install and start the `streakify-scheduler` Termux service.
+7. Install scheduler recovery when the Termux:Boot Android app is available, or print a warning when it is missing.
+8. Stop with a clear error if Stockfish is missing while Chess.com or Duolingo is enabled, or if TensorFlow Lite runtime is missing while Duolingo is enabled.
 
 Manual setup:
 
@@ -100,6 +110,7 @@ command -v ffmpeg
 If Chromium or ChromeDriver is missing, check the Chromium package installation from Termux repositories.
 If `termux-x11` is missing, install `x11-repo` and `termux-x11-nightly`.
 If `sv` is missing, install `termux-services`.
+If Termux:Boot is installed, open its Android app once and rerun `sh install.sh`. The installer creates only `$HOME/.termux/boot/streakify-scheduler.sh` and leaves other boot scripts unchanged.
 If `termux-notification` is missing, Streakify skips notifications without failing.
 If the Termux:X11 Android app is installed but the installer cannot detect it, open Termux:X11 once from Android and rerun `sh install.sh`. If your device uses a different package name, run install with `TERMUX_X11_ANDROID_PACKAGE` set to that package name.
 If `stockfish` is missing, install it in Termux and make sure the `stockfish` command is available in `PATH`.
@@ -200,6 +211,16 @@ Run a single platform (used internally by the scheduler for retries):
 python -m streakify --platform tiktok
 ```
 
+Restart the scheduler service manually after the phone starts:
+
+```sh
+. "$PREFIX/etc/profile.d/start-services.sh"
+sv up streakify-scheduler
+sv status streakify-scheduler
+```
+
+Termux:Boot runs the same service startup automatically after reboot when it is installed, opened once, and detected during `sh install.sh`. Its Streakify boot script also requests a wake lock when `termux-wake-lock` is available. Exclude Termux and Termux:Boot from Android battery optimization for more reliable scheduling.
+
 ## Project Structure
 
 ```text
@@ -248,6 +269,8 @@ Any automation has risk. Streakify uses undetected-chromedriver to look like a r
 ### Can it run automatically every day?
 
 Yes. Run `sh install.sh`, then set `schedule.enabled=true` and `schedule.time=HH:MM` in `config.txt`. The `streakify-scheduler` service keeps reading the config file and starts Streakify at that time.
+
+The scheduler cannot run while the phone is fully powered off. With Termux:Boot configured, it restarts after the phone boots. If today's configured time already passed and that schedule has not run, Streakify runs it after the scheduler starts. Without Termux:Boot, use the manual service restart commands in the Usage section.
 
 ### Does it require root?
 
