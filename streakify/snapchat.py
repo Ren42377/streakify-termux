@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from selenium.webdriver.remote.webelement import WebElement
 
 
-SNAPCHAT_AUTH_STABLE_SECONDS = 5
+SNAPCHAT_AUTH_STABLE_SECONDS = 15
 SNAPCHAT_SEARCHBOX_SECONDS = 60
 SNAPCHAT_SEARCH_SECONDS = 15
 SNAPCHAT_SEND_WAIT_SECONDS = 8
@@ -60,20 +60,6 @@ class SnapchatClient:
                 return self._result("ok", "Snapchat session is active.")
             time.sleep(0.25)
         return self._result("error", "Snapchat URL did not stabilize.")
-
-    def has_dashboard(self) -> bool:
-        from selenium.webdriver.common.by import By
-
-        try:
-            return any(
-                element.is_displayed()
-                for element in self.driver.find_elements(
-                    By.CSS_SELECTOR,
-                    'input[role="searchbox"], input[placeholder*="Search"], [role="searchbox"] input',
-                )
-            )
-        except Exception:
-            return False
 
     def has_unsupported_browser_message(self) -> bool:
         try:
