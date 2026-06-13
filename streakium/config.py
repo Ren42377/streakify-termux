@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from streakify.runtime_paths import get_auth_profile_dir, get_snapchat_camera_folder
+from streakium.runtime_paths import get_auth_profile_dir, get_snapchat_camera_folder
 
 
-class StreakifyConfigError(RuntimeError):
+class StreakiumConfigError(RuntimeError):
     pass
 
 
@@ -319,7 +319,7 @@ def _read_schedule_time(values: dict[str, str], key: str) -> str:
 
 
 def _raise_config_error(message: str, cause: Exception | None = None) -> None:
-    error = StreakifyConfigError(f"{message}\n\n{EXPECTED_CONFIG}")
+    error = StreakiumConfigError(f"{message}\n\n{EXPECTED_CONFIG}")
     if cause is None:
         raise error
     raise error from cause

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from streakify.config import AppConfig, StreakifyConfigError, load_config
-from streakify.runtime_paths import get_scheduler_state_path
+from streakium.config import AppConfig, StreakiumConfigError, load_config
+from streakium.runtime_paths import get_scheduler_state_path
 
 
 SCHEDULER_POLL_SECONDS = 30
@@ -40,7 +40,7 @@ class SchedulerState:
 def main() -> int:
     project_dir = Path(__file__).resolve().parent.parent
     state_path = get_scheduler_state_path()
-    print("Streakify scheduler started.", flush=True)
+    print("Streakium scheduler started.", flush=True)
     while True:
         try:
             config = load_config(project_dir / "config.txt")
@@ -50,12 +50,12 @@ def main() -> int:
             if action == "run":
                 key = state_key(now, config.schedule.time)
                 write_scheduler_state(state_path, SchedulerState(key, config.schedule.time, clear_stale_retries(state, now).retries))
-                _, failed_platforms = run_streakify(project_dir)
+                _, failed_platforms = run_streakium(project_dir)
                 state = read_scheduler_state(state_path)
                 write_scheduler_state(state_path, add_retry_plans(state, now, failed_platforms))
             elif action.startswith("retry:"):
                 platform_key = action.split(":", 1)[1]
-                _, failed_platforms = run_streakify(project_dir, platform_key)
+                _, failed_platforms = run_streakium(project_dir, platform_key)
                 state = read_scheduler_state(state_path)
                 write_scheduler_state(state_path, finish_retry_attempt(state, now, platform_key, platform_key in failed_platforms))
             elif action == "mark_done":
@@ -64,7 +64,7 @@ def main() -> int:
                 write_scheduler_state(state_path, SchedulerState(state.last_run_key, config.schedule.time))
             elif state.schedule_time != config.schedule.time:
                 write_scheduler_state(state_path, SchedulerState(state.last_run_key, config.schedule.time))
-        except StreakifyConfigError as exc:
+        except StreakiumConfigError as exc:
             print(f"Scheduler config error: {exc}", flush=True)
         except Exception as exc:
             print(f"Scheduler error: {exc}", flush=True)
@@ -260,12 +260,12 @@ def parse_failed_platforms(output: str) -> set[str]:
     return failed
 
 
-def run_streakify(project_dir: Path, platform_key: str | None = None) -> tuple[int, set[str]]:
+def run_streakium(project_dir: Path, platform_key: str | None = None) -> tuple[int, set[str]]:
     if platform_key:
-        print(f"Scheduler retrying Streakify platform: {platform_key}.", flush=True)
+        print(f"Scheduler retrying Streakium platform: {platform_key}.", flush=True)
     else:
-        print("Scheduler running Streakify.", flush=True)
-    command = [sys.executable, "-m", "streakify"]
+        print("Scheduler running Streakium.", flush=True)
+    command = [sys.executable, "-m", "streakium"]
     if platform_key:
         command.extend(["--platform", platform_key])
     completed = subprocess.run(

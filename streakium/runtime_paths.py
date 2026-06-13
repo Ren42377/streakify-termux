@@ -4,27 +4,27 @@ import os
 from pathlib import Path
 
 
-def get_streakify_home() -> Path:
-    value = os.environ.get("STREAKIFY_HOME", "").strip()
+def get_streakium_home() -> Path:
+    value = os.environ.get("STREAKIUM_HOME", "").strip()
     if value:
         return Path(value).expanduser()
-    return Path.home() / ".streakify"
+    return Path.home() / ".streakium"
 
 
 def get_auth_profile_dir() -> Path:
-    return get_streakify_home() / ".auth" / "selenium-profile"
+    return get_streakium_home() / ".auth" / "selenium-profile"
 
 
 def get_driver_cache_dir() -> Path:
-    return get_streakify_home() / ".drivers"
+    return get_streakium_home() / ".drivers"
 
 
 def get_media_cache_dir() -> Path:
-    return get_streakify_home() / "media"
+    return get_streakium_home() / "media"
 
 
 def get_scheduler_state_path() -> Path:
-    return get_streakify_home() / "scheduler-state.txt"
+    return get_streakium_home() / "scheduler-state.txt"
 
 
 def get_snapchat_camera_folder() -> Path:

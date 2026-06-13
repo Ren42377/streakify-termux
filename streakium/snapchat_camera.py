@@ -7,7 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from streakify.runtime_paths import get_media_cache_dir, get_snapchat_camera_folder
+from streakium.runtime_paths import get_media_cache_dir, get_snapchat_camera_folder
 
 
 class SnapchatCameraError(RuntimeError):

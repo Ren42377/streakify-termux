@@ -8,7 +8,7 @@ from typing import Any
 
 import chess
 
-from streakify.runtime_paths import get_duolingo_model_dir
+from streakium.runtime_paths import get_duolingo_model_dir
 
 VISION_INPUT_SIZE = 48
 VISION_CONFIDENCE_THRESHOLD = 0.65

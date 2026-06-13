@@ -7,20 +7,20 @@ from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Callable
 
-from streakify.browser import BrowserAutomationError, create_browser_driver
-from streakify.chess import ChessAutomationError, ChessClient, run_chess_with_driver
-from streakify.config import AppConfig, StreakifyConfigError, load_config
-from streakify.duolingo import DuolingoAutomationError, DuolingoClient, run_duolingo_with_driver
-from streakify.notifications import notify
-from streakify.snapchat import SnapchatAutomationError, SnapchatClient, run_snapchat_with_driver
-from streakify.snapchat_camera import (
+from streakium.browser import BrowserAutomationError, create_browser_driver
+from streakium.chess import ChessAutomationError, ChessClient, run_chess_with_driver
+from streakium.config import AppConfig, StreakiumConfigError, load_config
+from streakium.duolingo import DuolingoAutomationError, DuolingoClient, run_duolingo_with_driver
+from streakium.notifications import notify
+from streakium.snapchat import SnapchatAutomationError, SnapchatClient, run_snapchat_with_driver
+from streakium.snapchat_camera import (
     SnapchatCameraError,
     is_ffmpeg_available,
     prepare_snapchat_camera,
 )
-from streakify.stockfish import is_stockfish_available
-from streakify.termux_x11 import TermuxX11Error, TermuxX11Session, stop_termux_x11_server
-from streakify.tiktok import TikTokAutomationError, TikTokClient, run_tiktok_with_driver
+from streakium.stockfish import is_stockfish_available
+from streakium.termux_x11 import TermuxX11Error, TermuxX11Session, stop_termux_x11_server
+from streakium.tiktok import TikTokAutomationError, TikTokClient, run_tiktok_with_driver
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver
@@ -98,7 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="streakify")
+    parser = argparse.ArgumentParser(prog="streakium")
     parser.add_argument(
         "--platform",
         action="append",
@@ -109,10 +109,10 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def _run_configured_platforms(platform_keys: Sequence[str] | None = None) -> int:
-    notify("Streakify", "Run started.")
+    notify("Streakium", "Run started.")
     try:
         config = load_config()
-    except StreakifyConfigError as exc:
+    except StreakiumConfigError as exc:
         print(f"Config error: {exc}")
         return _finish(1, "Config error.")
     platforms = _enabled_platforms(config)
@@ -160,7 +160,7 @@ def _finish(exit_code: int, message: str) -> int:
     status = "finished" if exit_code == 0 else "failed"
     if exit_code != 0 and _TERMUX_X11_USED:
         stop_termux_x11_server()
-    notify("Streakify", f"Run {status}: {message}")
+    notify("Streakium", f"Run {status}: {message}")
     return exit_code
 
 
@@ -296,7 +296,7 @@ def _prompt_for_login(platforms: Sequence[PlatformAdapter]) -> None:
     try:
         input("Complete the login in the browser, then press Enter here to continue.")
     except EOFError as exc:
-        raise BrowserAutomationError("The login prompt could not read input. Run Streakify from an interactive Termux shell.") from exc
+        raise BrowserAutomationError("The login prompt could not read input. Run Streakium from an interactive Termux shell.") from exc
 
 
 def _print_login_required(platforms: Sequence[PlatformAdapter], still_required: bool = False) -> None:

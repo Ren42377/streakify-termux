@@ -4,9 +4,9 @@ import time
 import logging
 from typing import TYPE_CHECKING
 
-from streakify.browser import click_element
-from streakify.config import AppConfig
-from streakify.results import SnapchatRunResult
+from streakium.browser import click_element
+from streakium.config import AppConfig
+from streakium.results import SnapchatRunResult
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver

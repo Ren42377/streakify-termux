@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from streakify.browser import click_element
-from streakify.config import AppConfig
-from streakify.results import TikTokRunResult
+from streakium.browser import click_element
+from streakium.config import AppConfig
+from streakium.results import TikTokRunResult
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver

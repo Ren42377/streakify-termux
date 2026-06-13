@@ -5,8 +5,8 @@ import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from streakify.config import BrowserConfig
-from streakify.runtime_paths import get_driver_cache_dir, get_termux_chromium_binary
+from streakium.config import BrowserConfig
+from streakium.runtime_paths import get_driver_cache_dir, get_termux_chromium_binary
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver

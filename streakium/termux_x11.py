@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import time
 
-from streakify.runtime_paths import get_streakify_home
+from streakium.runtime_paths import get_streakium_home
 
 
 class TermuxX11Error(RuntimeError):
@@ -212,7 +212,7 @@ def _terminate_pid(pid: int, display: str) -> None:
 
 
 def _pid_file_path():
-    return get_streakify_home() / "termux-x11.pid"
+    return get_streakium_home() / "termux-x11.pid"
 
 
 def _read_recorded_server_pid(display: str) -> int | None:

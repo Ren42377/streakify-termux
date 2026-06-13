@@ -7,15 +7,15 @@ from urllib.parse import parse_qs, urlparse
 
 import chess
 
-from streakify.browser import click_element
-from streakify.config import AppConfig
-from streakify.duolingo_vision import (
+from streakium.browser import click_element
+from streakium.config import AppConfig
+from streakium.duolingo_vision import (
     VISION_INPUT_SIZE,
     VisionPrediction,
     load_vision_model,
 )
-from streakify.results import DuolingoRunResult
-from streakify.stockfish import StockfishEngine, StockfishError, is_stockfish_available
+from streakium.results import DuolingoRunResult
+from streakium.stockfish import StockfishEngine, StockfishError, is_stockfish_available
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver

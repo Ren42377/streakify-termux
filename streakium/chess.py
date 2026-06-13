@@ -5,10 +5,10 @@ import time
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from streakify.browser import click_element
-from streakify.config import AppConfig
-from streakify.results import ChessRunResult
-from streakify.stockfish import StockfishEngine, StockfishError, is_stockfish_available
+from streakium.browser import click_element
+from streakium.config import AppConfig
+from streakium.results import ChessRunResult
+from streakium.stockfish import StockfishEngine, StockfishError, is_stockfish_available
 
 if TYPE_CHECKING:
     from selenium.webdriver.chrome.webdriver import WebDriver
