@@ -4,4 +4,4 @@ set -eu
 
 cd -- "$(dirname -- "$0")"
 
-python -m streakify
+python -m streakium
