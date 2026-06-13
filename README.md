@@ -24,12 +24,6 @@ Streakify starts undetected Chromium automatically
 Opens the enabled platform
         |
         v
-TikTok sends configured messages
-Chess.com plays one legal non-best puzzle move
-Duolingo plays Chess Match until checkmate
-Snapchat sends one camera Snap per configured username
-        |
-        v
 Done
 ```
 
@@ -64,6 +58,7 @@ pkg install -y git
 git clone https://github.com/Ren42377/streakify-termux.git
 cd streakify-termux
 sh install.sh
+nano config.txt
 ```
 
 The installer will:
@@ -79,7 +74,6 @@ The installer will:
 Manual setup:
 
 ```sh
-pkg update
 pkg install x11-repo
 pkg install python
 pkg install chromium
@@ -120,13 +114,13 @@ Required settings:
 ```txt
 tiktok=true
 chess=true
-duolingo=false
-snapchat=false
+duolingo=true
+snapchat=true
 browser.headless=true
 tiktok.message=🔥
-tiktok.max_chats=10
-chess.engine_time=0.4
-snapchat.usernames=user_a,user_b
+tiktok.max_chats=1
+chess.engine_time=0.1
+snapchat.usernames=user1,user2
 ```
 
 Optional Snapchat camera settings:
@@ -140,7 +134,7 @@ Optional scheduler settings:
 
 ```txt
 schedule.enabled=false
-schedule.time=09:00
+schedule.time=00:00
 ```
 
 | Setting | Value | Purpose |
