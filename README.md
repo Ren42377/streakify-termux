@@ -53,6 +53,7 @@ Done
 Fast setup:
 
 ```sh
+termux-setup-storage
 pkg update && pkg upgrade -y
 pkg install -y git
 git clone https://github.com/Ren42377/streakify-termux.git
