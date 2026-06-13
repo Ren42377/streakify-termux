@@ -1,6 +1,6 @@
-# Streakify
+# Streakium
 
-Streakify is a Python automation tool for maintaining streaks across platforms directly from Termux on Android.
+Streakium is a Python automation tool for maintaining streaks across platforms directly from Termux on Android.
 
 ## Current Platform Support
 
@@ -15,10 +15,10 @@ Streakify is a Python automation tool for maintaining streaks across platforms d
 ## How It Works
 
 ```text
-Run Streakify in Termux
+Run Streakium in Termux
         |
         v
-Streakify starts undetected Chromium automatically
+Streakium starts undetected Chromium automatically
         |
         v
 Opens the enabled platform
@@ -37,7 +37,7 @@ Done
 | Chromium and ChromeDriver | Used by undetected-chromedriver for browser automation |
 | undetected-chromedriver | Anti-detection Chromium driver, installed through pip |
 | Termux X11 | Used for visible login sessions |
-| termux-services | Keeps the optional Streakify scheduler running in Termux |
+| termux-services | Keeps the optional Streakium scheduler running in Termux |
 | Termux:Boot | Optional but recommended. Restarts the scheduler service after the phone reboots |
 | Termux:API | Optional. Enables Android notifications when `termux-notification` is available |
 | Stockfish | Calculates Chess.com and Duolingo chess moves |
@@ -65,8 +65,8 @@ Fast setup:
 termux-setup-storage
 pkg update && pkg upgrade -y
 pkg install -y git
-git clone https://github.com/Ren42377/streakify-termux.git
-cd streakify-termux
+git clone https://github.com/Ren42377/streakium-termux.git
+cd streakium-termux
 sh install.sh
 nano config.txt
 ```
@@ -78,9 +78,20 @@ The installer will:
 3. Install TensorFlow Lite runtime when the Termux package is available.
 4. Install Python dependencies from `requirements.txt` (selenium, setuptools, undetected-chromedriver, chess).
 5. Verify that Chromium, ChromeDriver, the Termux X11 command, and the Termux:X11 Android app are available.
-6. Install and start the `streakify-scheduler` Termux service.
-7. Install scheduler recovery when the Termux:Boot Android app is available, or print a warning when it is missing.
-8. Stop with a clear error if Stockfish is missing while Chess.com or Duolingo is enabled, or if TensorFlow Lite runtime is missing while Duolingo is enabled.
+6. Stop and remove the legacy `streakify-scheduler` service and boot script when present.
+7. Install and start the `streakium-scheduler` Termux service.
+8. Install scheduler recovery when the Termux:Boot Android app is available, or print a warning when it is missing.
+9. Stop with a clear error if Stockfish is missing while Chess.com or Duolingo is enabled, or if TensorFlow Lite runtime is missing while Duolingo is enabled.
+
+### Upgrading from Streakify
+
+Streakium uses a new Python package, scheduler service, environment variable, and runtime directory. Run `sh install.sh` again after updating the project. The installer removes the old `streakify-scheduler` service and `$HOME/.termux/boot/streakify-scheduler.sh` so both schedulers cannot run together.
+
+Existing login sessions and runtime data are not migrated from `$HOME/.streakify`. Log in again when Streakium opens each enabled platform. The old directory is left untouched and can be removed after confirming it is no longer needed:
+
+```sh
+rm -rf "$HOME/.streakify"
+```
 
 Manual setup:
 
@@ -110,8 +121,8 @@ command -v ffmpeg
 If Chromium or ChromeDriver is missing, check the Chromium package installation from Termux repositories.
 If `termux-x11` is missing, install `x11-repo` and `termux-x11-nightly`.
 If `sv` is missing, install `termux-services`.
-If Termux:Boot is installed, open its Android app once and rerun `sh install.sh`. The installer creates only `$HOME/.termux/boot/streakify-scheduler.sh` and leaves other boot scripts unchanged.
-If `termux-notification` is missing, Streakify skips notifications without failing.
+If Termux:Boot is installed, open its Android app once and rerun `sh install.sh`. The installer creates only `$HOME/.termux/boot/streakium-scheduler.sh` and leaves other boot scripts unchanged.
+If `termux-notification` is missing, Streakium skips notifications without failing.
 If the Termux:X11 Android app is installed but the installer cannot detect it, open Termux:X11 once from Android and rerun `sh install.sh`. If your device uses a different package name, run install with `TERMUX_X11_ANDROID_PACKAGE` set to that package name.
 If `stockfish` is missing, install it in Termux and make sure the `stockfish` command is available in `PATH`.
 If `python-tflite-runtime` is missing, the Duolingo adapter stops with an error.
@@ -119,7 +130,7 @@ If `ffmpeg` is missing while Snapchat is enabled, the Snapchat adapter stops wit
 
 ## Configuration
 
-Edit `config.txt` before running Streakify.
+Edit `config.txt` before running Streakium.
 
 Required settings:
 
@@ -166,28 +177,28 @@ schedule.time=00:00
 | `schedule.time` | `H:MM` or `HH:MM` | Optional daily run time in the phone's local Termux timezone. Defaults to `09:00` |
 
 > [!IMPORTANT]
-> If any setting is missing, misspelled, duplicated, empty, or invalid, Streakify stops before opening the browser and prints the setting that must be fixed.
+> If any setting is missing, misspelled, duplicated, empty, or invalid, Streakium stops before opening the browser and prints the setting that must be fixed.
 
 ## Runtime Data
 
 By default, runtime data is stored in:
 
 ```text
-$HOME/.streakify/
+$HOME/.streakium/
 ```
 
 That directory contains:
 
-- Browser profile and login session: `$HOME/.streakify/.auth/selenium-profile`
-- Driver cache: `$HOME/.streakify/.drivers`
-- Generated Snapchat fake camera and SHA-256 cache: `$HOME/.streakify/media`
-- Scheduler state: `$HOME/.streakify/scheduler-state.txt`
-- Termux X11 PID file: `$HOME/.streakify/termux-x11.pid`
+- Browser profile and login session: `$HOME/.streakium/.auth/selenium-profile`
+- Driver cache: `$HOME/.streakium/.drivers`
+- Generated Snapchat fake camera and SHA-256 cache: `$HOME/.streakium/media`
+- Scheduler state: `$HOME/.streakium/scheduler-state.txt`
+- Termux X11 PID file: `$HOME/.streakium/termux-x11.pid`
 
 To move all runtime data:
 
 ```sh
-STREAKIFY_HOME="$HOME/.streakify-alt" sh run.sh
+STREAKIUM_HOME="$HOME/.streakium-alt" sh run.sh
 ```
 
 ## Usage
@@ -199,32 +210,32 @@ Run all enabled flows:
 ```
 *(Alternatively, you can use `sh run.sh`)*
 
-You can also run Streakify directly with Python:
+You can also run Streakium directly with Python:
 
 ```sh
-python -m streakify
+python -m streakium
 ```
 
 Run a single platform (used internally by the scheduler for retries):
 
 ```sh
-python -m streakify --platform tiktok
+python -m streakium --platform tiktok
 ```
 
 Restart the scheduler service manually after the phone starts:
 
 ```sh
 . "$PREFIX/etc/profile.d/start-services.sh"
-sv up streakify-scheduler
-sv status streakify-scheduler
+sv up streakium-scheduler
+sv status streakium-scheduler
 ```
 
-Termux:Boot runs the same service startup automatically after reboot when it is installed, opened once, and detected during `sh install.sh`. Its Streakify boot script also requests a wake lock when `termux-wake-lock` is available. Exclude Termux and Termux:Boot from Android battery optimization for more reliable scheduling.
+Termux:Boot runs the same service startup automatically after reboot when it is installed, opened once, and detected during `sh install.sh`. Its Streakium boot script also requests a wake lock when `termux-wake-lock` is available. Exclude Termux and Termux:Boot from Android battery optimization for more reliable scheduling.
 
 ## Project Structure
 
 ```text
-streakify-termux/
+streakium-termux/
 ├── install.sh                  # Installation script
 ├── run.sh                      # Runner script
 ├── schedule.sh                 # Scheduler service runner
@@ -233,7 +244,7 @@ streakify-termux/
 ├── LICENSE                     # MIT license
 ├── README.md                   # Documentation
 ├── assets/                     # Default Snapchat camera image folder
-└── streakify/                  # Python package
+└── streakium/                  # Python package
     ├── __init__.py
     ├── __main__.py             # CLI entry point
     ├── browser.py              # Browser setup with undetected-chromedriver
@@ -260,22 +271,22 @@ streakify-termux/
 
 ### Is this safe?
 
-Streakify runs locally on your phone and does not send your data to a Streakify server. Browser sessions are stored locally in `$HOME/.streakify/`. Do not share that directory.
+Streakium runs locally on your phone and does not send your data to a Streakium server. Browser sessions are stored locally in `$HOME/.streakium/`. Do not share that directory.
 
 ### Can my account be banned?
 
-Any automation has risk. Streakify uses undetected-chromedriver to look like a real Chromium browser, but you should still use it carefully and avoid setting `tiktok.max_chats` or the Snapchat target list too high.
+Any automation has risk. Streakium uses undetected-chromedriver to look like a real Chromium browser, but you should still use it carefully and avoid setting `tiktok.max_chats` or the Snapchat target list too high.
 
 ### Can it run automatically every day?
 
-Yes. Run `sh install.sh`, then set `schedule.enabled=true` and `schedule.time=HH:MM` in `config.txt`. The `streakify-scheduler` service keeps reading the config file and starts Streakify at that time.
+Yes. Run `sh install.sh`, then set `schedule.enabled=true` and `schedule.time=HH:MM` in `config.txt`. The `streakium-scheduler` service keeps reading the config file and starts Streakium at that time.
 
-The scheduler cannot run while the phone is fully powered off. With Termux:Boot configured, it restarts after the phone boots. If today's configured time already passed and that schedule has not run, Streakify runs it after the scheduler starts. Without Termux:Boot, use the manual service restart commands in the Usage section.
+The scheduler cannot run while the phone is fully powered off. With Termux:Boot configured, it restarts after the phone boots. If today's configured time already passed and that schedule has not run, Streakium runs it after the scheduler starts. Without Termux:Boot, use the manual service restart commands in the Usage section.
 
 ### Does it require root?
 
-No. Streakify runs fully inside Termux.
+No. Streakium runs fully inside Termux.
 
 ### Can other platforms be added?
 
-Yes. Streakify is designed so each platform can be implemented as a separate adapter.
+Yes. Streakium is designed so each platform can be implemented as a separate adapter.
