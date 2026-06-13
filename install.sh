@@ -259,6 +259,36 @@ if command -v sv >/dev/null 2>&1; then
     sv up streakify-scheduler >/dev/null 2>&1 || true
 fi
 
+TERMUX_BOOT_PACKAGE=com.termux.boot
+if android_package_exists "$TERMUX_BOOT_PACKAGE"; then
+    echo "Installing Termux:Boot scheduler recovery."
+    BOOT_DIR="$HOME/.termux/boot"
+    BOOT_SCRIPT="$BOOT_DIR/streakify-scheduler.sh"
+    mkdir -p "$BOOT_DIR"
+    cat > "$BOOT_SCRIPT" <<'EOF'
+#!/bin/sh
+
+if command -v termux-wake-lock >/dev/null 2>&1; then
+    termux-wake-lock >/dev/null 2>&1 || true
+fi
+
+if [ -f "$PREFIX/etc/profile.d/start-services.sh" ]; then
+    . "$PREFIX/etc/profile.d/start-services.sh"
+fi
+
+if command -v sv >/dev/null 2>&1; then
+    sv up streakify-scheduler >/dev/null 2>&1 || true
+fi
+EOF
+    chmod +x "$BOOT_SCRIPT"
+    echo "Termux:Boot recovery installed at $BOOT_SCRIPT."
+    echo "Open the Termux:Boot Android app once so it can run scripts after reboot."
+else
+    echo "Warning: Termux:Boot was not found."
+    echo "The scheduler is running now, but it will not restart automatically after a phone reboot."
+    echo "Install and open Termux:Boot once, then rerun sh install.sh to enable automatic recovery."
+fi
+
 echo "Installation complete."
 echo "Run ./run.sh to start all enabled flows."
 echo "Run sh schedule.sh to start the scheduler manually."
