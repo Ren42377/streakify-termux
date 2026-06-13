@@ -1,5 +1,5 @@
 # ============================================================
-# Streakify Configuration
+# Streakium Configuration
 # ============================================================
 # Edit this file to control which platforms run and how.
 # Lines starting with # are comments and will be ignored.
@@ -69,7 +69,7 @@ snapchat.camera_mode=random
 # ------------------------------------------------------------
 # Scheduler
 # ------------------------------------------------------------
-# enabled : true = run Streakify automatically once per day
+# enabled : true = run Streakium automatically once per day
 #           false = manual runs only
 # time    : daily run time in HH:MM (24-hour, local timezone)
 #           Only used when enabled=true.
