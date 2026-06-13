@@ -233,10 +233,25 @@ chromedriver --version
 echo "Termux X11 command:"
 command -v termux-x11
 
-echo "Installing Streakify scheduler service."
+LEGACY_SERVICE_NAME=streakify-scheduler
+LEGACY_SERVICE_DIR="$PREFIX/var/service/$LEGACY_SERVICE_NAME"
+LEGACY_BOOT_SCRIPT="$HOME/.termux/boot/$LEGACY_SERVICE_NAME.sh"
+
+echo "Removing legacy Streakify scheduler installation."
+if command -v sv >/dev/null 2>&1; then
+    sv down "$LEGACY_SERVICE_NAME" >/dev/null 2>&1 || true
+fi
+if [ -e "$LEGACY_SERVICE_DIR" ] || [ -L "$LEGACY_SERVICE_DIR" ]; then
+    rm -rf "$LEGACY_SERVICE_DIR"
+fi
+if [ -e "$LEGACY_BOOT_SCRIPT" ] || [ -L "$LEGACY_BOOT_SCRIPT" ]; then
+    rm -f "$LEGACY_BOOT_SCRIPT"
+fi
+
+echo "Installing Streakium scheduler service."
 chmod +x "$PROJECT_DIR/run.sh" "$PROJECT_DIR/schedule.sh"
 
-SERVICE_DIR="$PREFIX/var/service/streakify-scheduler"
+SERVICE_DIR="$PREFIX/var/service/streakium-scheduler"
 mkdir -p "$SERVICE_DIR/log"
 
 cat > "$SERVICE_DIR/run" <<EOF
@@ -248,7 +263,7 @@ EOF
 
 cat > "$SERVICE_DIR/log/run" <<'EOF'
 #!/bin/sh
-LOG_DIR="${STREAKIFY_HOME:-$HOME/.streakify}/logs/streakify-scheduler"
+LOG_DIR="${STREAKIUM_HOME:-$HOME/.streakium}/logs/streakium-scheduler"
 mkdir -p "$LOG_DIR"
 exec svlogd -tt "$LOG_DIR"
 EOF
@@ -256,14 +271,14 @@ EOF
 chmod +x "$SERVICE_DIR/run" "$SERVICE_DIR/log/run"
 
 if command -v sv >/dev/null 2>&1; then
-    sv up streakify-scheduler >/dev/null 2>&1 || true
+    sv up streakium-scheduler >/dev/null 2>&1 || true
 fi
 
 TERMUX_BOOT_PACKAGE=com.termux.boot
 if android_package_exists "$TERMUX_BOOT_PACKAGE"; then
     echo "Installing Termux:Boot scheduler recovery."
     BOOT_DIR="$HOME/.termux/boot"
-    BOOT_SCRIPT="$BOOT_DIR/streakify-scheduler.sh"
+    BOOT_SCRIPT="$BOOT_DIR/streakium-scheduler.sh"
     mkdir -p "$BOOT_DIR"
     cat > "$BOOT_SCRIPT" <<'EOF'
 #!/bin/sh
@@ -277,7 +292,7 @@ if [ -f "$PREFIX/etc/profile.d/start-services.sh" ]; then
 fi
 
 if command -v sv >/dev/null 2>&1; then
-    sv up streakify-scheduler >/dev/null 2>&1 || true
+    sv up streakium-scheduler >/dev/null 2>&1 || true
 fi
 EOF
     chmod +x "$BOOT_SCRIPT"
